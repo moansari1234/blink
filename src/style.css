@@ -501,6 +501,89 @@ body {
   color: var(--accent);
 }
 
+/* Software Updates */
+.update-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.update-result {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.update-hint {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.update-checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.update-uptodate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-green);
+  font-weight: 500;
+  padding: 6px 10px;
+  background: var(--bg-card-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.update-available-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 120, 212, 0.08);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+}
+
+.update-available-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.update-badge.new {
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.update-notes-body {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.update-download-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.update-error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--color-red);
+  font-size: 11.5px;
+}
+
 /* Footer */
 .app-footer {
   display: flex;

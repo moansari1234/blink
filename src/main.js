@@ -253,6 +253,101 @@ resetTimerBtn.addEventListener('click', async () => {
   }
 });
 
+// Open URL helper (IPC to Rust or window.open)
+window.openUrl = async function(url) {
+  try {
+    await invoke('open_url', { url });
+  } catch (e) {
+    window.open(url, '_blank');
+  }
+};
+
+// Check for Updates
+const btnCheckUpdates = document.getElementById('btnCheckUpdates');
+const updateResult = document.getElementById('updateResult');
+const CURRENT_VERSION = '1.0.1';
+
+function compareVersions(v1, v2) {
+  const p1 = v1.split('.').map(n => parseInt(n, 10) || 0);
+  const p2 = v2.split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
+btnCheckUpdates?.addEventListener('click', async () => {
+  btnCheckUpdates.disabled = true;
+  btnCheckUpdates.textContent = 'Checking GitHub...';
+  updateResult.innerHTML = '<span class="update-checking">⏳ Fetching latest release info from GitHub...</span>';
+
+  try {
+    const res = await fetch('https://api.github.com/repos/moansari1234/blink/releases/latest', {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+
+    if (!res.ok) {
+      throw new Error(`GitHub API returned HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const latestTag = data.tag_name || '';
+    const latestVersion = latestTag.replace(/^v/, '');
+
+    if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+      // Found newer version!
+      const msiAsset = data.assets?.find(a => a.name.endsWith('.msi')) || data.assets?.[0];
+      const downloadUrl = msiAsset?.browser_download_url || data.html_url;
+
+      updateResult.innerHTML = `
+        <div class="update-available-banner">
+          <div class="update-available-header">
+            <span class="update-badge new">New Update: v${escapeHtml(latestVersion)}</span>
+          </div>
+          <p class="update-notes-body">${escapeHtml(data.name || 'New version available with improvements.')}</p>
+          <div class="update-download-actions">
+            <button class="fluent-button primary small" onclick="openUrl('${downloadUrl}')">
+              ⬇️ Download Update (.msi)
+            </button>
+            <button class="fluent-button secondary small" onclick="openUrl('${data.html_url}')">
+              View on GitHub
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      updateResult.innerHTML = `
+        <div class="update-uptodate">
+          <span>✅ You are using the latest version of Blink (v${CURRENT_VERSION}).</span>
+        </div>
+      `;
+    }
+  } catch (err) {
+    updateResult.innerHTML = `
+      <div class="update-error">
+        <span>Failed to check for updates: ${escapeHtml(err.message)}</span>
+        <div>
+          <button class="fluent-button secondary small" onclick="openUrl('https://github.com/moansari1234/blink/releases')">
+            Visit GitHub Releases
+          </button>
+        </div>
+      </div>
+    `;
+  } finally {
+    btnCheckUpdates.disabled = false;
+    btnCheckUpdates.textContent = '🔄 Check for Updates';
+  }
+});
+
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
   loadConfig();

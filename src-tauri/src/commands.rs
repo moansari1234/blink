@@ -68,3 +68,15 @@ pub fn test_notification(app: AppHandle, state: State<'_, AppState>) {
 pub fn test_sound(state: State<'_, AppState>, volume: f32) {
     state.audio.play_chime(volume);
 }
+
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}

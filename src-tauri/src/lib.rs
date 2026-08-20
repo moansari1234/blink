@@ -8,7 +8,7 @@ pub mod tray;
 
 use audio::AudioPlayer;
 use commands::{
-    get_config, get_timer_state, pause_timer, reset_timer, resume_timer, save_config,
+    get_config, get_timer_state, open_url, pause_timer, reset_timer, resume_timer, save_config,
     snooze_timer, test_notification, test_sound, AppState,
 };
 use config::ConfigManager;
@@ -141,6 +141,7 @@ pub fn run() {
             snooze_timer,
             test_notification,
             test_sound,
+            open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Blink application");
