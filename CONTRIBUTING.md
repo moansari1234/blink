@@ -61,6 +61,8 @@ cargo tauri build
 The compiled output will be placed in:
 `src-tauri/target/release/bundle/msi/`
 
+For our release lifecycle and version numbering standards, see [VERSIONING.md](VERSIONING.md).
+
 ---
 
 ## 📐 Project Architecture

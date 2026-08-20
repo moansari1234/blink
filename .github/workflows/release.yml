@@ -3,8 +3,8 @@ name: Release Blink
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+' # Trigger on milestone tags like v1.0, v1.1, v2.0
-  workflow_dispatch:      # Allows manual trigger from GitHub Actions UI anytime
+      - 'v*.*.0'         # Auto-triggers on Level 1 (Major: vX.0.0) & Level 2 (Minor: vX.Y.0)
+  workflow_dispatch:      # Allows manual trigger for Level 3 (Patch: vX.Y.Z) from GitHub Actions UI
 
 jobs:
   release:

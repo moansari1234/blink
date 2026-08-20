@@ -88,9 +88,11 @@ Blink stores its settings in standard JSON format at:
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributing & Releases
 
-Contributions are welcome! Please check out [CONTRIBUTING.md](CONTRIBUTING.md) to set up your development environment.
+Contributions are welcome! Please check out:
+- [CONTRIBUTING.md](CONTRIBUTING.md) for local development and build guidelines.
+- [VERSIONING.md](VERSIONING.md) for version bumping and automated release workflows.
 
 ---
 

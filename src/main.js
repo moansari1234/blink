@@ -265,7 +265,7 @@ window.openUrl = async function(url) {
 // Check for Updates
 const btnCheckUpdates = document.getElementById('btnCheckUpdates');
 const updateResult = document.getElementById('updateResult');
-const CURRENT_VERSION = '1.0.1';
+const CURRENT_VERSION = '1.1.0';
 
 function compareVersions(v1, v2) {
   const p1 = v1.split('.').map(n => parseInt(n, 10) || 0);
