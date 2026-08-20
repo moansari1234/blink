@@ -105,6 +105,23 @@ impl TimerEngine {
         }
     }
 
+    pub fn adjust_work_duration(&self, old_work_minutes: u32, new_work_minutes: u32) {
+        if old_work_minutes == new_work_minutes {
+            return;
+        }
+        if let Ok(mut state) = self.state.write() {
+            if state.status == TimerStatus::Running
+                || state.status == TimerStatus::PausedManual
+                || state.status == TimerStatus::PausedIdle
+            {
+                let old_total_secs = old_work_minutes.max(1) * 60;
+                let new_total_secs = new_work_minutes.max(1) * 60;
+                let elapsed = old_total_secs.saturating_sub(state.remaining_seconds);
+                state.remaining_seconds = new_total_secs.saturating_sub(elapsed).max(1);
+            }
+        }
+    }
+
     /// Ticks the timer by 1 second. Returns `true` if a break notification should trigger!
     pub fn tick(&self, config: &BlinkConfig) -> bool {
         let mut state = match self.state.write() {
@@ -256,5 +273,32 @@ mod tests {
         let info = engine.get_info();
         assert_eq!(info.remaining_seconds, 180);
         assert_eq!(info.state, "Snoozed");
+    }
+
+    #[test]
+    fn test_adjust_work_duration() {
+        let engine = TimerEngine::new(20);
+        // Simulate working for 5 minutes (300s worked, 900s remaining)
+        let config = BlinkConfig {
+            work_duration_minutes: 20,
+            idle_detection_enabled: false,
+            ..Default::default()
+        };
+        for _ in 0..300 {
+            engine.tick(&config);
+        }
+        assert_eq!(engine.get_info().remaining_seconds, 900);
+
+        // Saving other settings (work duration same: 20 -> 20)
+        engine.adjust_work_duration(20, 20);
+        assert_eq!(engine.get_info().remaining_seconds, 900);
+
+        // Changing work duration 20 -> 30 (300s worked, should have 1500s remaining = 25m)
+        engine.adjust_work_duration(20, 30);
+        assert_eq!(engine.get_info().remaining_seconds, 1500);
+
+        // Changing work duration 30 -> 10 (300s worked, should have 300s remaining = 5m)
+        engine.adjust_work_duration(30, 10);
+        assert_eq!(engine.get_info().remaining_seconds, 300);
     }
 }

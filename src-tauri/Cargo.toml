@@ -1,6 +1,6 @@
 [package]
 name = "blink"
-version = "1.0.0"
+version = "1.0.1"
 description = "Lightweight 20-20-20 break reminder desktop app"
 authors = ["Blink Contributors"]
 edition = "2021"

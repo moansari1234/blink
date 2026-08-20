@@ -19,9 +19,15 @@ pub fn get_config(state: State<'_, AppState>) -> BlinkConfig {
 
 #[tauri::command]
 pub fn save_config(state: State<'_, AppState>, config: BlinkConfig) -> Result<(), String> {
+    let old_config = state.config_mgr.get_config();
     state.config_mgr.update_config(config.clone())?;
-    // Reset/update timer interval immediately
-    state.timer.reset(config.work_duration_minutes);
+
+    // Only adjust timer if work duration interval actually changed!
+    if old_config.work_duration_minutes != config.work_duration_minutes {
+        state
+            .timer
+            .adjust_work_duration(old_config.work_duration_minutes, config.work_duration_minutes);
+    }
     Ok(())
 }
 

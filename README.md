@@ -9,12 +9,12 @@
 
 ---
 
-## 📥 Quick Download (v1.0.0)
+## 📥 Quick Download (v1.0.1)
 
 | Package | Format | Direct Download |
 | :--- | :--- | :--- |
-| **Windows Installer (Recommended)** | `.msi` | [⬇️ Download `Blink_1.0.0_x64_en-US.msi`](https://github.com/moansari1234/blink/releases/download/v1.0.0/Blink_1.0.0_x64_en-US.msi) |
-| **NSIS Setup Wizard** | `.exe` | [⬇️ Download `Blink_1.0.0_x64-setup.exe`](https://github.com/moansari1234/blink/releases/download/v1.0.0/Blink_1.0.0_x64-setup.exe) |
+| **Windows Installer (Recommended)** | `.msi` | [⬇️ Download `Blink_1.0.1_x64_en-US.msi`](https://github.com/moansari1234/blink/releases/download/v1.0.1/Blink_1.0.1_x64_en-US.msi) |
+| **NSIS Setup Wizard** | `.exe` | [⬇️ Download `Blink_1.0.1_x64-setup.exe`](https://github.com/moansari1234/blink/releases/download/v1.0.1/Blink_1.0.1_x64-setup.exe) |
 
 *All release assets and changelogs are available on the [Releases Page](https://github.com/moansari1234/blink/releases).*
 
