@@ -2,9 +2,21 @@
 
 > An ultra-lightweight, privacy-first, open-source Windows 11 desktop app that reminds you to take breaks following the 20-20-20 rule.
 
+[![GitHub Release](https://img.shields.io/github/v/release/moansari1234/blink?color=green&logo=github)](https://github.com/moansari1234/blink/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011-0078D6.svg)](https://microsoft.com/windows)
 [![Built with: Rust](https://img.shields.io/badge/Built%20with-Rust%20%2B%20Tauri%20v2-dea584.svg)](https://tauri.app)
+
+---
+
+## 📥 Quick Download (v1.0.0)
+
+| Package | Format | Direct Download |
+| :--- | :--- | :--- |
+| **Windows Installer (Recommended)** | `.msi` | [⬇️ Download `Blink_1.0.0_x64_en-US.msi`](https://github.com/moansari1234/blink/releases/download/v1.0.0/Blink_1.0.0_x64_en-US.msi) |
+| **NSIS Setup Wizard** | `.exe` | [⬇️ Download `Blink_1.0.0_x64-setup.exe`](https://github.com/moansari1234/blink/releases/download/v1.0.0/Blink_1.0.0_x64-setup.exe) |
+
+*All release assets and changelogs are available on the [Releases Page](https://github.com/moansari1234/blink/releases).*
 
 ---
 
@@ -20,7 +32,7 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 
 ## ✨ Features
 
-- **⚡ Ultra-Lightweight**: Uses `< 20 MB` RAM and `< 0.1%` CPU. Runs quietly in your system tray.
+- **⚡ Ultra-Lightweight**: Uses `< 38 MB` RAM and `< 0.1%` CPU. Runs quietly in your system tray.
 - **🔒 100% Offline & Private**: Zero telemetry, zero tracking, zero network connections.
 - **🎨 Windows 11 Fluent Design**: Modern mica-inspired settings interface styled with Windows 11 design tokens.
 - **⏱ Live Tray Countdown**: Right-click the system tray icon anytime to see your live remaining time (`⏱ 14:32 remaining`).
@@ -37,18 +49,6 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 - **🔔 Gentle Bell Chime**: Calming, soft harmonic chime that alerts you without jarring loud beeps. Volume adjustable or muteable.
 - **🔄 Instant Hot-Reload**: Settings changes take effect immediately without restarting the app. You can also edit `%APPDATA%\Blink\config.json` directly!
 - **🚀 Auto-Start on Login**: Optionally launches minimized to tray when your PC boots.
-
----
-
-## 📥 Installation
-
-### Windows Installer (Recommended)
-1. Download the latest `Blink_1.0.0_x64_en-US.msi` from the [Releases](https://github.com/moansari1234/blink/releases) page.
-2. Run the installer.
-3. Blink will launch directly in your system tray (near the clock).
-
-### Portable / Manual Build
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on building from source with Cargo and Tauri.
 
 ---
 
@@ -81,7 +81,7 @@ Blink stores its settings in standard JSON format at:
 
 - **Backend**: Rust 2021 Edition
 - **App Framework**: Tauri v2 (`tray-icon`, `tauri-plugin-notification`, `tauri-plugin-autostart`, `tauri-plugin-single-instance`)
-- **Idle Detection**: `system-idle-time` + Windows Win32 API (`GetLastInputInfo`, `SHQueryUserNotificationState`)
+- **Idle Detection**: Windows Win32 API (`GetLastInputInfo`, `SHQueryUserNotificationState`)
 - **Audio Engine**: `rodio` with embedded Vorbis/WAV audio synthesis
 - **Frontend**: Vanilla HTML5, CSS3 (Fluent Design Tokens), JavaScript (No bulky node_modules runtime)
 
