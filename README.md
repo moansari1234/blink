@@ -34,8 +34,12 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 
 - **⚡ Ultra-Lightweight**: Uses `< 38 MB` RAM and `< 0.1%` CPU. Runs quietly in your system tray.
 - **🔒 100% Offline & Private**: Zero telemetry, zero tracking, zero network connections.
-- **🎨 Windows 11 Fluent Design**: Modern mica-inspired settings interface styled with Windows 11 design tokens.
-- **⏱ Live Tray Countdown**: Right-click the system tray icon anytime to see your live remaining time (`⏱ 14:32 remaining`).
+- **📊 Break Stats & History Dashboard**: 90-day local history tracking with streak counter, daily averages, and a crisp 7-day activity chart.
+- **🎨 Dark, Light, & System Themes**: Seamless dark mode and light mode overrides across the settings interface and screen overlays.
+- **💬 Custom Break Messages**: Set custom reminder messages with `|` pipe rotation support (e.g. `Look outside | Stretch your arms | Drink water`).
+- **⌨️ Global Keyboard Shortcuts**: `Ctrl+Shift+B` to Pause/Resume and `Ctrl+Shift+N` to Skip Break without opening any menus.
+- **🖥️ Multi-Monitor Overlay Positioning**: Automatically positions the corner overlay prompt on your primary display or whichever monitor contains your active cursor.
+- **⏱ Live Tray Countdown & Tooltip**: Dynamic system tray hover tooltip showing live remaining time and timer state.
 - **🟢🟡🔴 Dynamic Status Icons**:
   - 🟢 **Green**: Timer actively running
   - 🟡 **Yellow**: Paused (idle detected or manually paused)
@@ -44,7 +48,7 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 - **🔔 Configurable Notifications**:
   - **Native Windows Toast**: Clean OS notifications.
   - **System Tray Balloon**: Lightweight tray notification.
-  - **Interactive Overlay**: Gentle screen corner prompt with direct **Snooze** & **Dismiss** buttons.
+  - **Interactive Overlay**: Gentle screen corner prompt with smooth 300ms animations, countdown bar, and direct **Snooze** & **Dismiss** buttons.
 - **🔕 Windows Focus Assist Aware**: Respects "Do Not Disturb" / Focus Assist modes so it won't interrupt high-stakes presentations or full-screen gaming sessions.
 - **🔔 Gentle Bell Chime**: Calming, soft harmonic chime that alerts you without jarring loud beeps. Volume adjustable or muteable.
 - **🔄 Instant Hot-Reload**: Settings changes take effect immediately without restarting the app. You can also edit `%APPDATA%\Blink\config.json` directly!
@@ -55,7 +59,7 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 
 ## ⚙️ Configuration
 
-Blink stores its settings in standard JSON format at:
+Blink stores its configuration in standard JSON format at:
 ```text
 %APPDATA%\Blink\config.json
 ```
@@ -72,7 +76,11 @@ Blink stores its settings in standard JSON format at:
   "sound_enabled": true,
   "sound_volume": 0.5,
   "snooze_duration_minutes": 5,
-  "respect_focus_assist": true
+  "respect_focus_assist": true,
+  "theme": "system",
+  "break_message": "Time for a 20-second break! Look at something 20 feet away.",
+  "hotkeys_enabled": true,
+  "overlay_monitor": "primary"
 }
 ```
 
@@ -82,7 +90,7 @@ Blink stores its settings in standard JSON format at:
 
 - **Backend**: Rust 2021 Edition
 - **App Framework**: Tauri v2 (`tray-icon`, `tauri-plugin-notification`, `tauri-plugin-autostart`, `tauri-plugin-single-instance`)
-- **Idle Detection**: Windows Win32 API (`GetLastInputInfo`, `SHQueryUserNotificationState`)
+- **Idle & Hotkeys**: Windows Win32 API (`GetLastInputInfo`, `SHQueryUserNotificationState`, `RegisterHotKey`)
 - **Audio Engine**: `rodio` with embedded Vorbis/WAV audio synthesis
 - **Frontend**: Vanilla HTML5, CSS3 (Fluent Design Tokens), JavaScript (No bulky node_modules runtime)
 
@@ -93,6 +101,7 @@ Blink stores its settings in standard JSON format at:
 Contributions are welcome! Please check out:
 - [CONTRIBUTING.md](CONTRIBUTING.md) for local development and build guidelines.
 - [VERSIONING.md](VERSIONING.md) for version bumping and automated release workflows.
+- [ROADMAP.md](ROADMAP.md) for planned future features and updates.
 
 ---
 

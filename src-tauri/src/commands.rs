@@ -1,5 +1,6 @@
 use crate::audio::AudioPlayer;
 use crate::config::{BlinkConfig, ConfigManager};
+use crate::history::{BreakStats, HistoryManager};
 use crate::notification::NotificationManager;
 use crate::timer::{TimerEngine, TimerInfo};
 use std::sync::Arc;
@@ -10,6 +11,7 @@ pub struct AppState {
     pub timer: Arc<TimerEngine>,
     pub notifications: Arc<NotificationManager>,
     pub audio: Arc<AudioPlayer>,
+    pub history: Arc<HistoryManager>,
 }
 
 #[tauri::command]
@@ -67,6 +69,20 @@ pub fn test_notification(app: AppHandle, state: State<'_, AppState>) {
 #[tauri::command]
 pub fn test_sound(state: State<'_, AppState>, volume: f32) {
     state.audio.play_chime(volume);
+}
+
+#[tauri::command]
+pub fn get_break_stats(state: State<'_, AppState>) -> BreakStats {
+    state.history.get_stats()
+}
+
+#[tauri::command]
+pub fn record_break_action(
+    state: State<'_, AppState>,
+    action: String,
+    duration_seconds: u32,
+) -> Result<(), String> {
+    state.history.record_break(&action, duration_seconds)
 }
 
 #[tauri::command]

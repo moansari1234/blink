@@ -1,6 +1,8 @@
 pub mod audio;
 pub mod commands;
 pub mod config;
+pub mod history;
+pub mod hotkey;
 pub mod idle;
 pub mod notification;
 pub mod timer;
@@ -8,10 +10,13 @@ pub mod tray;
 
 use audio::AudioPlayer;
 use commands::{
-    get_config, get_timer_state, open_url, pause_timer, reset_timer, resume_timer, save_config,
-    snooze_timer, test_notification, test_sound, AppState,
+    get_break_stats, get_config, get_timer_state, open_url, pause_timer, record_break_action,
+    reset_timer, resume_timer, save_config, snooze_timer, test_notification, test_sound,
+    AppState,
 };
 use config::ConfigManager;
+use history::HistoryManager;
+use hotkey::HotkeyManager;
 use notification::NotificationManager;
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,17 +32,20 @@ pub fn run() {
     let timer = Arc::new(TimerEngine::new(initial_config.work_duration_minutes));
     let notifications = Arc::new(NotificationManager::new());
     let audio = Arc::new(AudioPlayer::new());
+    let history = Arc::new(HistoryManager::new());
 
     let app_state = AppState {
         config_mgr: Arc::clone(&config_mgr),
         timer: Arc::clone(&timer),
         notifications: Arc::clone(&notifications),
         audio: Arc::clone(&audio),
+        history: Arc::clone(&history),
     };
 
     let timer_worker = Arc::clone(&timer);
     let config_worker = Arc::clone(&config_mgr);
     let notif_worker = Arc::clone(&notifications);
+    let history_worker = Arc::clone(&history);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -59,6 +67,13 @@ pub fn run() {
             let tray_manager = Arc::new(
                 TrayManager::setup(&app_handle)
                     .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?,
+            );
+
+            // Start Global Hotkey Listener Thread
+            HotkeyManager::start(
+                Arc::clone(&timer_worker),
+                Arc::clone(&config_worker),
+                app_handle.clone(),
             );
 
             // Handle Tray Menu Action Events
@@ -102,11 +117,14 @@ pub fn run() {
             let timer_loop = Arc::clone(&timer_worker);
             let config_loop = Arc::clone(&config_worker);
             let notif_loop = Arc::clone(&notif_worker);
+            let history_loop = Arc::clone(&history_worker);
             let tray_loop = Arc::clone(&tray_manager);
             let app_handle_loop = app_handle.clone();
 
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(1));
+                let mut was_on_break = false;
+
                 loop {
                     interval.tick().await;
                     let current_cfg = config_loop.get_config();
@@ -115,6 +133,13 @@ pub fn run() {
                     if should_alert {
                         notif_loop.dispatch_break_alert(&app_handle_loop, &current_cfg);
                     }
+
+                    // Check if break just finished (was on break -> now running)
+                    let current_state = timer_loop.get_info().state;
+                    if was_on_break && current_state == "Running" {
+                        let _ = history_loop.record_break("completed", current_cfg.break_duration_seconds);
+                    }
+                    was_on_break = current_state == "OnBreak";
 
                     tray_loop.update(&timer_loop, &current_cfg);
                 }
@@ -141,6 +166,8 @@ pub fn run() {
             snooze_timer,
             test_notification,
             test_sound,
+            get_break_stats,
+            record_break_action,
             open_url,
         ])
         .run(tauri::generate_context!())

@@ -1,16 +1,48 @@
 /* Blink — Break Overlay Notification Styling */
 
 :root {
-  --bg-card: rgba(36, 36, 36, 0.94);
+  --bg-card: rgba(36, 36, 36, 0.95);
   --text-primary: #ffffff;
   --text-secondary: #cccccc;
   --accent: #60cdff;
   --accent-hover: #78d5ff;
   --accent-text: #000000;
-  --border-card: rgba(255, 255, 255, 0.12);
+  --border-card: rgba(255, 255, 255, 0.14);
   --radius-lg: 14px;
   --radius-sm: 6px;
   --font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-card: rgba(255, 255, 255, 0.96);
+    --text-primary: #1b1b1b;
+    --text-secondary: #555555;
+    --accent: #0078d4;
+    --accent-hover: #0067b8;
+    --accent-text: #ffffff;
+    --border-card: rgba(0, 0, 0, 0.12);
+  }
+}
+
+html[data-theme="light"] {
+  --bg-card: rgba(255, 255, 255, 0.96);
+  --text-primary: #1b1b1b;
+  --text-secondary: #555555;
+  --accent: #0078d4;
+  --accent-hover: #0067b8;
+  --accent-text: #ffffff;
+  --border-card: rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme="dark"] {
+  --bg-card: rgba(36, 36, 36, 0.95);
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --accent: #60cdff;
+  --accent-hover: #78d5ff;
+  --accent-text: #000000;
+  --border-card: rgba(255, 255, 255, 0.14);
 }
 
 * {
@@ -35,23 +67,27 @@ body {
 
 .snooze-card {
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: 14px 18px;
   width: 360px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  animation: slideIn 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+  gap: 10px;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.snooze-card.dismissing {
+  animation: slideOut 0.22s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(16px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -59,15 +95,27 @@ body {
   }
 }
 
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+
 .snooze-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .snooze-icon {
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1;
+  color: var(--accent);
 }
 
 .snooze-title-area {
@@ -75,20 +123,21 @@ body {
 }
 
 .snooze-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
 }
 
 .snooze-subtitle {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-secondary);
   margin-top: 2px;
+  line-height: 1.35;
 }
 
 .countdown-bar-container {
   width: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(128, 128, 128, 0.2);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -102,14 +151,14 @@ body {
 
 .snooze-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .snooze-btn {
   flex: 1;
-  padding: 8px 12px;
+  padding: 7px 10px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
@@ -118,7 +167,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .snooze-btn.primary {
@@ -131,11 +180,11 @@ body {
 }
 
 .snooze-btn.secondary {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(128, 128, 128, 0.12);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(128, 128, 128, 0.2);
 }
 
 .snooze-btn.secondary:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(128, 128, 128, 0.2);
 }

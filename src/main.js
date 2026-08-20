@@ -1,4 +1,4 @@
-// Blink — Settings UI Logic
+// Blink — Settings UI Logic (v1.2.0)
 
 // Tauri invoke helper with fallback for web browser testing
 const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (async (cmd, args) => {
@@ -14,7 +14,11 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       sound_enabled: true,
       sound_volume: 0.5,
       snooze_duration_minutes: 5,
-      respect_focus_assist: true
+      respect_focus_assist: true,
+      theme: 'system',
+      break_message: 'Time for a 20-second break! Look at something 20 feet away.',
+      hotkeys_enabled: true,
+      overlay_monitor: 'primary'
     };
   }
   if (cmd === 'get_timer_state') {
@@ -25,12 +29,31 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       is_paused: false
     };
   }
+  if (cmd === 'get_break_stats') {
+    return {
+      breaks_today: 6,
+      breaks_this_week: 24,
+      daily_average: 5.2,
+      current_streak: 8,
+      best_streak: 14,
+      last_7_days: [
+        { day: 'Fri', date: '2026-08-14', count: 4 },
+        { day: 'Sat', date: '2026-08-15', count: 2 },
+        { day: 'Sun', date: '2026-08-16', count: 1 },
+        { day: 'Mon', date: '2026-08-17', count: 7 },
+        { day: 'Tue', date: '2026-08-18', count: 6 },
+        { day: 'Wed', date: '2026-08-19', count: 5 },
+        { day: 'Thu', date: '2026-08-20', count: 6 }
+      ]
+    };
+  }
   return {};
 });
 
 // State
 let currentConfig = null;
 let isTimerPaused = false;
+const CURRENT_VERSION = '1.2.0';
 
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -50,6 +73,21 @@ const volumeValueDisplay = document.getElementById('volumeValue');
 const footerStatus = document.getElementById('footerStatus');
 const idleEnabledSwitch = document.getElementById('idleEnabled');
 const idleThresholdRow = document.getElementById('idleThresholdRow');
+const themeSelect = document.getElementById('themeSelect');
+const btnRefreshStats = document.getElementById('btnRefreshStats');
+
+// Theme Management
+function applyTheme(theme) {
+  if (theme === 'dark' || theme === 'light') {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
+themeSelect?.addEventListener('change', (e) => {
+  applyTheme(e.target.value);
+});
 
 // Tab Navigation
 tabButtons.forEach(btn => {
@@ -64,6 +102,10 @@ tabButtons.forEach(btn => {
     btn.setAttribute('aria-selected', 'true');
     const targetTab = btn.getAttribute('data-tab');
     document.getElementById(`tab-${targetTab}`)?.classList.add('active');
+
+    if (targetTab === 'stats') {
+      loadBreakStats();
+    }
   });
 });
 
@@ -106,6 +148,13 @@ function populateForm(cfg) {
   const styleRadio = document.querySelector(`input[name="notificationStyle"][value="${cfg.notification_style}"]`);
   if (styleRadio) styleRadio.checked = true;
 
+  // New v1.2.x fields
+  document.getElementById('breakMessage').value = cfg.break_message || '';
+  document.getElementById('overlayMonitor').value = cfg.overlay_monitor || 'primary';
+  document.getElementById('themeSelect').value = cfg.theme || 'system';
+  document.getElementById('hotkeysEnabled').checked = cfg.hotkeys_enabled !== false;
+  applyTheme(cfg.theme || 'system');
+
   // Behavior
   document.getElementById('idleEnabled').checked = cfg.idle_detection_enabled;
   document.getElementById('idleThreshold').value = cfg.idle_threshold_seconds;
@@ -130,7 +179,11 @@ function readForm() {
     sound_enabled: document.getElementById('soundEnabled').checked,
     sound_volume: parseFloat(document.getElementById('soundVolume').value) || 0.5,
     snooze_duration_minutes: Math.max(1, parseInt(document.getElementById('snoozeDuration').value, 10) || 5),
-    respect_focus_assist: document.getElementById('focusAssistEnabled').checked
+    respect_focus_assist: document.getElementById('focusAssistEnabled').checked,
+    theme: document.getElementById('themeSelect').value || 'system',
+    break_message: document.getElementById('breakMessage').value.trim() || 'Time for a 20-second break! Look at something 20 feet away.',
+    hotkeys_enabled: document.getElementById('hotkeysEnabled').checked,
+    overlay_monitor: document.getElementById('overlayMonitor').value || 'primary'
   };
 }
 
@@ -140,6 +193,7 @@ async function saveConfig() {
   try {
     await invoke('save_config', { config });
     currentConfig = config;
+    applyTheme(config.theme);
     setStatus('Settings saved & applied immediately', 'success');
   } catch (err) {
     console.error('Failed to save config:', err);
@@ -159,7 +213,11 @@ function resetDefaults() {
     sound_enabled: true,
     sound_volume: 0.5,
     snooze_duration_minutes: 5,
-    respect_focus_assist: true
+    respect_focus_assist: true,
+    theme: 'system',
+    break_message: 'Time for a 20-second break! Look at something 20 feet away.',
+    hotkeys_enabled: true,
+    overlay_monitor: 'primary'
   };
   populateForm(defaults);
   setStatus('Reset to default values (click Save to apply)', 'normal');
@@ -205,6 +263,116 @@ async function updateTimerStatus() {
   } catch (err) {
     console.debug('Timer status poll failed:', err);
   }
+}
+
+// Stats & Chart Rendering
+async function loadBreakStats() {
+  try {
+    const stats = await invoke('get_break_stats');
+    if (!stats) return;
+
+    document.getElementById('statToday').textContent = stats.breaks_today ?? 0;
+    document.getElementById('statWeek').textContent = stats.breaks_this_week ?? 0;
+    document.getElementById('statAvg').textContent = (stats.daily_average ?? 0).toFixed(1);
+    document.getElementById('statStreak').textContent = `${stats.current_streak ?? 0}`;
+
+    drawStatsChart(stats.last_7_days || []);
+  } catch (err) {
+    console.error('Failed to load break stats:', err);
+  }
+}
+
+btnRefreshStats?.addEventListener('click', loadBreakStats);
+
+function drawStatsChart(days) {
+  const canvas = document.getElementById('statsChart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+
+  // Set high-DPI canvas buffer size
+  canvas.width = (rect.width || 380) * dpr;
+  canvas.height = (rect.height || 130) * dpr;
+  ctx.scale(dpr, dpr);
+
+  const width = rect.width || 380;
+  const height = rect.height || 130;
+
+  ctx.clearRect(0, 0, width, height);
+
+  if (!days || days.length === 0) {
+    ctx.fillStyle = '#888888';
+    ctx.font = '12px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No history data available yet.', width / 2, height / 2);
+    return;
+  }
+
+  const paddingBottom = 22;
+  const paddingTop = 20;
+  const chartHeight = height - paddingBottom - paddingTop;
+  const maxCount = Math.max(5, ...days.map(d => d.count || 0));
+
+  const numBars = days.length;
+  const barWidth = Math.min(32, (width - (numBars + 1) * 12) / numBars);
+  const totalSpacing = width - (numBars * barWidth);
+  const gap = totalSpacing / (numBars + 1);
+
+  // Compute computed style colors
+  const computed = getComputedStyle(document.documentElement);
+  const accentColor = computed.getPropertyValue('--accent').trim() || '#60cdff';
+  const textSecColor = computed.getPropertyValue('--text-secondary').trim() || '#888888';
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(128, 128, 128, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(gap / 2, height - paddingBottom);
+  ctx.lineTo(width - gap / 2, height - paddingBottom);
+  ctx.stroke();
+
+  // Draw bars
+  days.forEach((dayData, index) => {
+    const x = gap + index * (barWidth + gap);
+    const count = dayData.count || 0;
+    const barHeight = Math.max(4, (count / maxCount) * chartHeight);
+    const y = height - paddingBottom - barHeight;
+
+    // Bar fill with subtle gradient
+    const gradient = ctx.createLinearGradient(0, y, 0, height - paddingBottom);
+    gradient.addColorStop(0, accentColor);
+    gradient.addColorStop(1, accentColor + '99');
+
+    ctx.fillStyle = gradient;
+    roundRect(ctx, x, y, barWidth, barHeight, 4);
+    ctx.fill();
+
+    // Value count label above bar
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 10px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(count > 0 ? `${count}` : '0', x + barWidth / 2, y - 4);
+
+    // Day of week label below bar
+    ctx.fillStyle = textSecColor;
+    ctx.font = '10px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(dayData.day || '', x + barWidth / 2, height - 6);
+  });
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
 }
 
 // Event Listeners
@@ -253,7 +421,7 @@ resetTimerBtn.addEventListener('click', async () => {
   }
 });
 
-// Open URL helper (IPC to Rust or window.open)
+// Open URL helper
 window.openUrl = async function(url) {
   try {
     await invoke('open_url', { url });
@@ -265,7 +433,6 @@ window.openUrl = async function(url) {
 // Check for Updates
 const btnCheckUpdates = document.getElementById('btnCheckUpdates');
 const updateResult = document.getElementById('updateResult');
-const CURRENT_VERSION = '1.1.0';
 
 function compareVersions(v1, v2) {
   const p1 = v1.split('.').map(n => parseInt(n, 10) || 0);
@@ -304,7 +471,6 @@ btnCheckUpdates?.addEventListener('click', async () => {
     const latestVersion = latestTag.replace(/^v/, '');
 
     if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
-      // Found newer version!
       const msiAsset = data.assets?.find(a => a.name.endsWith('.msi')) || data.assets?.[0];
       const downloadUrl = msiAsset?.browser_download_url || data.html_url;
 
