@@ -43,7 +43,7 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 ## 📥 Installation
 
 ### Windows Installer (Recommended)
-1. Download the latest `Blink-setup.msi` from the [Releases](https://github.com/your-username/blink/releases) page.
+1. Download the latest `Blink_1.0.0_x64_en-US.msi` from the [Releases](https://github.com/moansari1234/blink/releases) page.
 2. Run the installer.
 3. Blink will launch directly in your system tray (near the clock).
 

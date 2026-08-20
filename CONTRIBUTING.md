@@ -28,7 +28,7 @@ To build Blink on Windows:
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/blink.git
+git clone https://github.com/moansari1234/blink.git
 cd blink
 ```
 
