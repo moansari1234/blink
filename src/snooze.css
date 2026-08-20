@@ -1,0 +1,141 @@
+/* Blink — Break Overlay Notification Styling */
+
+:root {
+  --bg-card: rgba(36, 36, 36, 0.94);
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --accent: #60cdff;
+  --accent-hover: #78d5ff;
+  --accent-text: #000000;
+  --border-card: rgba(255, 255, 255, 0.12);
+  --radius-lg: 14px;
+  --radius-sm: 6px;
+  --font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  font-family: var(--font-family);
+  background: transparent;
+  color: var(--text-primary);
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.snooze-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  width: 360px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideIn 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.snooze-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.snooze-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.snooze-title-area {
+  flex: 1;
+}
+
+.snooze-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.snooze-subtitle {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.countdown-bar-container {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.countdown-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}
+
+.snooze-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.snooze-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.snooze-btn.primary {
+  background-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.snooze-btn.primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.snooze-btn.secondary {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.snooze-btn.secondary:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}

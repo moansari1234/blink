@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blink — Break Reminder</title>
+  <link rel="stylesheet" href="snooze.css">
+</head>
+<body>
+  <div class="snooze-card">
+    <div class="snooze-header">
+      <div class="snooze-icon">👁</div>
+      <div class="snooze-title-area">
+        <h2 class="snooze-title">Time for an eye break!</h2>
+        <p class="snooze-subtitle">Look at something 20 feet away for 20 seconds.</p>
+      </div>
+    </div>
+    
+    <div class="countdown-bar-container">
+      <div class="countdown-bar" id="countdownBar"></div>
+    </div>
+
+    <div class="snooze-actions">
+      <button class="snooze-btn secondary" id="btnSnooze">
+        💤 Snooze (5m)
+      </button>
+      <button class="snooze-btn primary" id="btnDismiss">
+        ✓ Taking Break
+      </button>
+    </div>
+  </div>
+
+  <script src="snooze.js"></script>
+</body>
+</html>

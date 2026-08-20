@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blink — Settings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <div>
+          <h1 class="brand-title">Blink</h1>
+          <span class="brand-subtitle">20-20-20 Break Reminder</span>
+        </div>
+      </div>
+      <div class="timer-badge" id="timerBadge">
+        <span class="status-dot green" id="statusDot"></span>
+        <span id="headerCountdown">--:--</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="timer" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Timer
+      </button>
+      <button class="tab-btn" data-tab="notifications" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Notifications
+      </button>
+      <button class="tab-btn" data-tab="behavior" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Behavior
+      </button>
+      <button class="tab-btn" data-tab="about" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        About
+      </button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main class="tab-content-container">
+      <!-- 1. Timer Tab -->
+      <section class="tab-pane active" id="tab-timer">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Work Interval</h3>
+            <p class="card-desc">Time between eye rest reminders.</p>
+          </div>
+          <div class="control-row">
+            <div class="input-with-unit">
+              <input type="number" id="workDuration" min="1" max="180" value="20" class="fluent-input">
+              <span class="unit-label">minutes</span>
+            </div>
+            <span class="preset-hint">Default: 20 min</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Break Duration</h3>
+            <p class="card-desc">How long to rest your eyes looking 20 feet away.</p>
+          </div>
+          <div class="control-row">
+            <div class="input-with-unit">
+              <input type="number" id="breakDuration" min="5" max="300" value="20" class="fluent-input">
+              <span class="unit-label">seconds</span>
+            </div>
+            <span class="preset-hint">Default: 20 sec</span>
+          </div>
+        </div>
+
+        <div class="card action-preview-card">
+          <div class="quick-actions">
+            <button class="fluent-button secondary" id="btnPauseResume">
+              <span id="pauseResumeIcon">⏸</span> <span id="pauseResumeText">Pause Timer</span>
+            </button>
+            <button class="fluent-button secondary" id="btnResetTimer">
+              🔄 Reset Timer
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Notifications Tab -->
+      <section class="tab-pane" id="tab-notifications">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Notification Style</h3>
+            <p class="card-desc">Select how Blink alerts you when it's time for a break.</p>
+          </div>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="notificationStyle" value="toast" checked>
+              <div class="radio-card">
+                <span class="radio-title">Windows Toast</span>
+                <span class="radio-desc">Native Windows 11 notification banner.</span>
+              </div>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="notificationStyle" value="overlay">
+              <div class="radio-card">
+                <span class="radio-title">Screen Overlay</span>
+                <span class="radio-desc">Gentle corner prompt with direct Snooze button.</span>
+              </div>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="notificationStyle" value="tray">
+              <div class="radio-card">
+                <span class="radio-title">System Tray Tip</span>
+                <span class="radio-desc">Subtle balloon alert directly from the tray icon.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Snooze Duration</h3>
+            <p class="card-desc">How long to delay a break when snoozed.</p>
+          </div>
+          <div class="control-row">
+            <div class="input-with-unit">
+              <input type="number" id="snoozeDuration" min="1" max="60" value="5" class="fluent-input">
+              <span class="unit-label">minutes</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <h3 class="card-title">Audio Chime</h3>
+              <p class="card-desc">Play a soft, relaxing bell chime when break starts.</p>
+            </div>
+            <label class="fluent-switch">
+              <input type="checkbox" id="soundEnabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div class="slider-row" id="volumeControlRow">
+            <span class="slider-icon">🔈</span>
+            <input type="range" id="soundVolume" min="0" max="1" step="0.05" value="0.5" class="fluent-slider">
+            <span class="slider-icon">🔊</span>
+            <span class="slider-value" id="volumeValue">50%</span>
+          </div>
+
+          <div class="preview-actions">
+            <button class="fluent-button secondary small" id="btnTestSound">🎵 Test Chime</button>
+            <button class="fluent-button secondary small" id="btnTestNotification">🔔 Test Notification</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Behavior Tab -->
+      <section class="tab-pane" id="tab-behavior">
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <h3 class="card-title">Smart Idle Detection</h3>
+              <p class="card-desc">Auto-pause timer when you're away from keyboard or mouse.</p>
+            </div>
+            <label class="fluent-switch">
+              <input type="checkbox" id="idleEnabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="control-row nested-control" id="idleThresholdRow">
+            <label for="idleThreshold">Idle after:</label>
+            <div class="input-with-unit">
+              <input type="number" id="idleThreshold" min="30" max="1800" value="120" class="fluent-input">
+              <span class="unit-label">seconds</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <h3 class="card-title">Respect Focus Assist</h3>
+              <p class="card-desc">Suppress notifications during Do Not Disturb or full-screen gaming.</p>
+            </div>
+            <label class="fluent-switch">
+              <input type="checkbox" id="focusAssistEnabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <h3 class="card-title">Launch on Startup</h3>
+              <p class="card-desc">Start Blink minimized to system tray when Windows boots.</p>
+            </div>
+            <label class="fluent-switch">
+              <input type="checkbox" id="autoStartEnabled" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. About Tab -->
+      <section class="tab-pane" id="tab-about">
+        <div class="card about-hero">
+          <div class="about-logo">👁</div>
+          <h2 class="about-app-name">Blink</h2>
+          <span class="version-tag">Version 1.0.0</span>
+          <p class="about-motto">Protect your vision with effortless 20-20-20 micro-breaks.</p>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Privacy & Philosophy</h3>
+          <p class="about-text">
+            Blink is 100% offline, privacy-first, and open-source under the MIT License. No analytics, no telemetry, no background network usage.
+          </p>
+          <div class="config-location">
+            <span class="config-label">Config Path:</span>
+            <code id="configPathDisplay">%APPDATA%\Blink\config.json</code>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Action Bar -->
+    <footer class="app-footer">
+      <div class="footer-status" id="footerStatus">
+        <span class="status-text">Ready</span>
+      </div>
+      <div class="footer-actions">
+        <button class="fluent-button secondary" id="btnResetDefaults">Defaults</button>
+        <button class="fluent-button primary" id="btnSaveConfig">Save Settings</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
