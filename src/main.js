@@ -1,4 +1,4 @@
-// Blink — Settings UI Logic (v1.3.0)
+// Blink — Settings UI Logic (v1.4.0)
 
 // Tauri invoke helper with fallback for web browser testing
 const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (async (cmd, args) => {
@@ -28,7 +28,16 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       quiet_hours_enabled: false,
       quiet_hours_start: '12:00',
       quiet_hours_end: '13:00',
-      quiet_hours_days: [1, 2, 3, 4, 5]
+      quiet_hours_days: [1, 2, 3, 4, 5],
+      veil_opacity: 0.5,
+      eye_exercises_enabled: true,
+      strict_mode_enabled: false,
+      hydration_enabled: false,
+      hydration_interval_minutes: 45,
+      posture_enabled: false,
+      posture_interval_minutes: 30,
+      ui_scale: '100%',
+      reduced_motion: false
     };
   }
   if (cmd === 'get_timer_state') {
@@ -39,7 +48,9 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       is_paused: false,
       timer_mode: 'Standard',
       current_cycle: 1,
-      is_long_break: false
+      is_long_break: false,
+      hydration_remaining_seconds: 2700,
+      posture_remaining_seconds: 1800
     };
   }
   if (cmd === 'get_break_stats') {
@@ -67,7 +78,7 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
 let currentConfig = null;
 let isTimerPaused = false;
 let selectedCustomSound = null;
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.4.0';
 
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -90,7 +101,7 @@ const idleThresholdRow = document.getElementById('idleThresholdRow');
 const themeSelect = document.getElementById('themeSelect');
 const btnRefreshStats = document.getElementById('btnRefreshStats');
 
-// v1.3.0 Elements
+// Mode & Audio
 const mode202020 = document.getElementById('mode202020');
 const modePomodoro = document.getElementById('modePomodoro');
 const section202020 = document.getElementById('section202020');
@@ -98,29 +109,71 @@ const sectionPomodoro = document.getElementById('sectionPomodoro');
 const customSoundDisplay = document.getElementById('customSoundDisplay');
 const btnBrowseSound = document.getElementById('btnBrowseSound');
 const btnClearSound = document.getElementById('btnClearSound');
+
+// Scheduled Quiet Hours
 const quietHoursEnabled = document.getElementById('quietHoursEnabled');
 const quietHoursControls = document.getElementById('quietHoursControls');
 const daySelector = document.getElementById('daySelector');
+
+// v1.4.0 Additions
+const veilOpacitySlider = document.getElementById('veilOpacity');
+const veilOpacityValue = document.getElementById('veilOpacityValue');
+const eyeExercisesEnabled = document.getElementById('eyeExercisesEnabled');
+const strictModeEnabled = document.getElementById('strictModeEnabled');
+const hydrationEnabled = document.getElementById('hydrationEnabled');
+const hydrationRow = document.getElementById('hydrationRow');
+const hydrationInterval = document.getElementById('hydrationInterval');
+const btnTestHydration = document.getElementById('btnTestHydration');
+const postureEnabled = document.getElementById('postureEnabled');
+const postureRow = document.getElementById('postureRow');
+const postureInterval = document.getElementById('postureInterval');
+const btnTestPosture = document.getElementById('btnTestPosture');
+const uiScaleSelect = document.getElementById('uiScaleSelect');
+const reducedMotionSwitch = document.getElementById('reducedMotion');
+
+// Config & Modal
 const btnExportConfig = document.getElementById('btnExportConfig');
 const btnImportConfig = document.getElementById('btnImportConfig');
 const confirmModal = document.getElementById('confirmModal');
 const btnCancelReset = document.getElementById('btnCancelReset');
 const btnConfirmReset = document.getElementById('btnConfirmReset');
 
-// Theme Management
+// Theme & Accessibility Management
 function applyTheme(theme) {
-  if (theme === 'dark' || theme === 'light') {
+  if (theme === 'dark' || theme === 'light' || theme === 'highcontrast') {
     document.documentElement.setAttribute('data-theme', theme);
   } else {
     document.documentElement.removeAttribute('data-theme');
   }
 }
 
-themeSelect?.addEventListener('change', (e) => {
-  applyTheme(e.target.value);
+function applyScale(scale) {
+  if (scale === '125%' || scale === '150%') {
+    document.documentElement.setAttribute('data-scale', scale);
+  } else {
+    document.documentElement.removeAttribute('data-scale');
+  }
+}
+
+function applyReducedMotion(reduced) {
+  if (reduced) {
+    document.documentElement.classList.add('reduced-motion');
+  } else {
+    document.documentElement.classList.remove('reduced-motion');
+  }
+}
+
+themeSelect?.addEventListener('change', (e) => applyTheme(e.target.value));
+uiScaleSelect?.addEventListener('change', (e) => applyScale(e.target.value));
+reducedMotionSwitch?.addEventListener('change', (e) => applyReducedMotion(e.target.checked));
+
+// Veil Opacity Slider
+veilOpacitySlider?.addEventListener('input', (e) => {
+  const percent = Math.round(e.target.value * 100);
+  if (veilOpacityValue) veilOpacityValue.textContent = `${percent}%`;
 });
 
-// Mode Toggle Handler (20-20-20 vs Pomodoro)
+// Mode Toggle Handler
 function updateModeSections(mode) {
   if (mode === 'pomodoro') {
     section202020.style.display = 'none';
@@ -172,7 +225,7 @@ quietHoursEnabled?.addEventListener('change', (e) => {
   quietHoursControls.style.display = e.target.checked ? 'block' : 'none';
 });
 
-// Day Selector (M, T, W, T, F, S, S)
+// Day Selector
 daySelector?.querySelectorAll('.day-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.classList.toggle('active');
@@ -194,6 +247,33 @@ function setSelectedDays(days) {
     btn.classList.toggle('active', daySet.has(dayNum));
   });
 }
+
+// Hydration & Posture Toggles
+hydrationEnabled?.addEventListener('change', (e) => {
+  hydrationRow.style.display = e.target.checked ? 'flex' : 'none';
+});
+
+postureEnabled?.addEventListener('change', (e) => {
+  postureRow.style.display = e.target.checked ? 'flex' : 'none';
+});
+
+btnTestHydration?.addEventListener('click', async () => {
+  try {
+    await invoke('test_hydration_alert');
+    setStatus('Dispatched test hydration reminder', 'normal');
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+btnTestPosture?.addEventListener('click', async () => {
+  try {
+    await invoke('test_posture_alert');
+    setStatus('Dispatched test posture reminder', 'normal');
+  } catch (e) {
+    console.error(e);
+  }
+});
 
 // Config Export / Import
 btnExportConfig?.addEventListener('click', async () => {
@@ -300,6 +380,36 @@ function populateForm(cfg) {
   document.getElementById('quietEnd').value = cfg.quiet_hours_end || '13:00';
   setSelectedDays(cfg.quiet_hours_days);
 
+  // v1.4.x Settings
+  if (veilOpacitySlider) {
+    veilOpacitySlider.value = cfg.veil_opacity ?? 0.5;
+    veilOpacityValue.textContent = `${Math.round((cfg.veil_opacity ?? 0.5) * 100)}%`;
+  }
+  if (eyeExercisesEnabled) eyeExercisesEnabled.checked = cfg.eye_exercises_enabled !== false;
+  if (strictModeEnabled) strictModeEnabled.checked = !!cfg.strict_mode_enabled;
+
+  if (hydrationEnabled) {
+    hydrationEnabled.checked = !!cfg.hydration_enabled;
+    hydrationRow.style.display = cfg.hydration_enabled ? 'flex' : 'none';
+    hydrationInterval.value = cfg.hydration_interval_minutes || 45;
+  }
+
+  if (postureEnabled) {
+    postureEnabled.checked = !!cfg.posture_enabled;
+    postureRow.style.display = cfg.posture_enabled ? 'flex' : 'none';
+    postureInterval.value = cfg.posture_interval_minutes || 30;
+  }
+
+  if (uiScaleSelect) {
+    uiScaleSelect.value = cfg.ui_scale || '100%';
+    applyScale(cfg.ui_scale || '100%');
+  }
+
+  if (reducedMotionSwitch) {
+    reducedMotionSwitch.checked = !!cfg.reduced_motion;
+    applyReducedMotion(!!cfg.reduced_motion);
+  }
+
   // General & Notifications
   document.getElementById('snoozeDuration').value = cfg.snooze_duration_minutes;
   document.getElementById('soundEnabled').checked = cfg.sound_enabled;
@@ -354,7 +464,16 @@ function readForm() {
     quiet_hours_enabled: quietHoursEnabled.checked,
     quiet_hours_start: document.getElementById('quietStart').value || '12:00',
     quiet_hours_end: document.getElementById('quietEnd').value || '13:00',
-    quiet_hours_days: getSelectedDays()
+    quiet_hours_days: getSelectedDays(),
+    veil_opacity: parseFloat(veilOpacitySlider?.value || '0.5'),
+    eye_exercises_enabled: eyeExercisesEnabled?.checked !== false,
+    strict_mode_enabled: !!strictModeEnabled?.checked,
+    hydration_enabled: !!hydrationEnabled?.checked,
+    hydration_interval_minutes: Math.max(5, parseInt(hydrationInterval?.value, 10) || 45),
+    posture_enabled: !!postureEnabled?.checked,
+    posture_interval_minutes: Math.max(5, parseInt(postureInterval?.value, 10) || 30),
+    ui_scale: uiScaleSelect?.value || '100%',
+    reduced_motion: !!reducedMotionSwitch?.checked
   };
 }
 
@@ -365,6 +484,8 @@ async function saveConfig() {
     await invoke('save_config', { config });
     currentConfig = config;
     applyTheme(config.theme);
+    applyScale(config.ui_scale);
+    applyReducedMotion(config.reduced_motion);
     setStatus('Settings saved & applied immediately', 'success');
   } catch (err) {
     console.error('Failed to save config:', err);
@@ -407,7 +528,16 @@ btnConfirmReset.addEventListener('click', () => {
     quiet_hours_enabled: false,
     quiet_hours_start: '12:00',
     quiet_hours_end: '13:00',
-    quiet_hours_days: [1, 2, 3, 4, 5]
+    quiet_hours_days: [1, 2, 3, 4, 5],
+    veil_opacity: 0.5,
+    eye_exercises_enabled: true,
+    strict_mode_enabled: false,
+    hydration_enabled: false,
+    hydration_interval_minutes: 45,
+    posture_enabled: false,
+    posture_interval_minutes: 30,
+    ui_scale: '100%',
+    reduced_motion: false
   };
   populateForm(defaults);
   setStatus('Reset to default values (click Save to apply)', 'normal');

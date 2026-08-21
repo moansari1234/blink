@@ -44,17 +44,36 @@ impl NotificationManager {
             }
             NotificationStyle::Overlay => {
                 let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("overlay_mode", "corner");
                 if let Some(snooze_win) = app.get_webview_window("snooze") {
-                    Self::position_overlay(&snooze_win, config.overlay_monitor);
+                    Self::position_overlay(&snooze_win, config.overlay_monitor, false);
                     let _ = snooze_win.show();
                     let _ = snooze_win.set_focus();
-                } else {
-                    let _ = app
-                        .notification()
-                        .builder()
-                        .title("👁 Time for an eye break!")
-                        .body(&break_msg)
-                        .show();
+                }
+            }
+            NotificationStyle::FloatingIsland => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("overlay_mode", "island");
+                if let Some(snooze_win) = app.get_webview_window("snooze") {
+                    Self::position_overlay(&snooze_win, config.overlay_monitor, true);
+                    let _ = snooze_win.show();
+                    let _ = snooze_win.set_focus();
+                }
+            }
+            NotificationStyle::FocusVeil => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("veil_mode", "veil");
+                if let Some(veil_win) = app.get_webview_window("veil") {
+                    let _ = veil_win.show();
+                    let _ = veil_win.set_focus();
+                }
+            }
+            NotificationStyle::EdgePulse => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("veil_mode", "edge");
+                if let Some(veil_win) = app.get_webview_window("veil") {
+                    let _ = veil_win.show();
+                    let _ = veil_win.set_focus();
                 }
             }
             NotificationStyle::Tray => {
@@ -64,6 +83,9 @@ impl NotificationManager {
                     .title("👁 Blink — Break Reminder")
                     .body(&break_msg)
                     .show();
+            }
+            NotificationStyle::AudioOnly => {
+                // Audio played above; no visual window shown
             }
         }
     }
@@ -79,11 +101,45 @@ impl NotificationManager {
         match config.notification_style {
             NotificationStyle::Overlay => {
                 let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("overlay_mode", "corner");
                 if let Some(snooze_win) = app.get_webview_window("snooze") {
-                    Self::position_overlay(&snooze_win, config.overlay_monitor);
+                    Self::position_overlay(&snooze_win, config.overlay_monitor, false);
                     let _ = snooze_win.show();
                     let _ = snooze_win.set_focus();
                 }
+            }
+            NotificationStyle::FloatingIsland => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("overlay_mode", "island");
+                if let Some(snooze_win) = app.get_webview_window("snooze") {
+                    Self::position_overlay(&snooze_win, config.overlay_monitor, true);
+                    let _ = snooze_win.show();
+                    let _ = snooze_win.set_focus();
+                }
+            }
+            NotificationStyle::FocusVeil => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("veil_mode", "veil");
+                if let Some(veil_win) = app.get_webview_window("veil") {
+                    let _ = veil_win.show();
+                    let _ = veil_win.set_focus();
+                }
+            }
+            NotificationStyle::EdgePulse => {
+                let _ = app.emit("break_message", &break_msg);
+                let _ = app.emit("veil_mode", "edge");
+                if let Some(veil_win) = app.get_webview_window("veil") {
+                    let _ = veil_win.show();
+                    let _ = veil_win.set_focus();
+                }
+            }
+            NotificationStyle::AudioOnly => {
+                let _ = app
+                    .notification()
+                    .builder()
+                    .title("🎧 Blink Audio-Only Mode")
+                    .body("Break started — close your eyes for 20 seconds!")
+                    .show();
             }
             _ => {
                 let _ = app
@@ -108,7 +164,29 @@ impl NotificationManager {
             .show();
     }
 
-    fn position_overlay(snooze_win: &tauri::WebviewWindow, monitor_mode: OverlayMonitor) {
+    pub fn dispatch_hydration_alert(&self, app: &AppHandle) {
+        let _ = app
+            .notification()
+            .builder()
+            .title("💧 Hydration Reminder")
+            .body("Time to drink some water! Stay refreshed and focused.")
+            .show();
+    }
+
+    pub fn dispatch_posture_alert(&self, app: &AppHandle) {
+        let _ = app
+            .notification()
+            .builder()
+            .title("🪑 Posture Check")
+            .body("Sit up straight, roll your shoulders back, and relax your neck.")
+            .show();
+    }
+
+    fn position_overlay(
+        snooze_win: &tauri::WebviewWindow,
+        monitor_mode: OverlayMonitor,
+        is_top_center: bool,
+    ) {
         let target_monitor = if monitor_mode == OverlayMonitor::Cursor {
             snooze_win
                 .cursor_position()
@@ -136,11 +214,18 @@ impl NotificationManager {
             let scale = monitor.scale_factor();
             let win_width = (380.0 * scale) as i32;
             let win_height = (160.0 * scale) as i32;
-            let margin_right = (24.0 * scale) as i32;
-            let margin_bottom = (60.0 * scale) as i32;
 
-            let x = mon_pos.x + mon_size.width as i32 - win_width - margin_right;
-            let y = mon_pos.y + mon_size.height as i32 - win_height - margin_bottom;
+            let (x, y) = if is_top_center {
+                let x = mon_pos.x + (mon_size.width as i32 - win_width) / 2;
+                let y = mon_pos.y + (24.0 * scale) as i32;
+                (x, y)
+            } else {
+                let margin_right = (24.0 * scale) as i32;
+                let margin_bottom = (60.0 * scale) as i32;
+                let x = mon_pos.x + mon_size.width as i32 - win_width - margin_right;
+                let y = mon_pos.y + mon_size.height as i32 - win_height - margin_bottom;
+                (x, y)
+            };
 
             let _ = snooze_win.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
         }

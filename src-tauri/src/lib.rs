@@ -12,7 +12,8 @@ use audio::AudioPlayer;
 use commands::{
     export_config, get_break_stats, get_config, get_timer_state, import_config, open_url,
     pause_timer, record_break_action, reset_timer, resume_timer, save_config, select_custom_sound,
-    snooze_timer, test_notification, test_sound, AppState,
+    snooze_timer, test_hydration_alert, test_notification, test_posture_alert, test_sound,
+    AppState,
 };
 use config::ConfigManager;
 use history::HistoryManager;
@@ -52,6 +53,7 @@ pub fn run() {
     let timer_worker = Arc::clone(&timer);
     let config_worker = Arc::clone(&config_mgr);
     let notif_worker = Arc::clone(&notifications);
+    let audio_worker = Arc::clone(&audio);
     let history_worker = Arc::clone(&history);
 
     tauri::Builder::default()
@@ -141,26 +143,33 @@ pub fn run() {
             let timer_loop = Arc::clone(&timer_worker);
             let config_loop = Arc::clone(&config_worker);
             let notif_loop = Arc::clone(&notif_worker);
+            let audio_loop = Arc::clone(&audio_worker);
             let history_loop = Arc::clone(&history_worker);
             let tray_loop = Arc::clone(&tray_manager);
             let app_handle_loop = app_handle.clone();
 
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(1));
-                let mut was_on_break = false;
 
                 loop {
                     interval.tick().await;
                     let current_cfg = config_loop.get_config();
-                    let should_alert = timer_loop.tick(&current_cfg);
+                    let tick_res = timer_loop.tick(&current_cfg);
 
-                    if should_alert {
+                    if tick_res.break_started {
                         notif_loop.dispatch_break_alert(&app_handle_loop, &current_cfg);
                     }
 
-                    // Check if break just finished (was on break -> now running)
-                    let current_state = timer_loop.get_info().state;
-                    if was_on_break && current_state == "Running" {
+                    if tick_res.break_finished {
+                        if current_cfg.notification_style == config::NotificationStyle::AudioOnly
+                            && current_cfg.sound_enabled
+                        {
+                            audio_loop.play_chime(
+                                current_cfg.sound_volume,
+                                current_cfg.custom_sound_path.as_deref(),
+                            );
+                        }
+
                         let break_secs = if current_cfg.timer_mode == config::TimerMode::Pomodoro {
                             current_cfg.pomodoro_short_break_minutes * 60
                         } else {
@@ -172,7 +181,14 @@ pub fn run() {
                             notif_loop.dispatch_milestone_alert(&app_handle_loop, streak_val);
                         }
                     }
-                    was_on_break = current_state == "OnBreak";
+
+                    if tick_res.hydration_due {
+                        notif_loop.dispatch_hydration_alert(&app_handle_loop);
+                    }
+
+                    if tick_res.posture_due {
+                        notif_loop.dispatch_posture_alert(&app_handle_loop);
+                    }
 
                     tray_loop.update(&timer_loop, &current_cfg, history_loop.get_current_streak());
                 }
@@ -199,6 +215,8 @@ pub fn run() {
             snooze_timer,
             test_notification,
             test_sound,
+            test_hydration_alert,
+            test_posture_alert,
             get_break_stats,
             record_break_action,
             select_custom_sound,

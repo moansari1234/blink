@@ -1,4 +1,4 @@
-/* Blink — Break Overlay Notification Styling */
+/* Blink — Break Overlay & Floating Island Styling */
 
 :root {
   --bg-card: rgba(36, 36, 36, 0.95);
@@ -45,6 +45,16 @@ html[data-theme="dark"] {
   --border-card: rgba(255, 255, 255, 0.14);
 }
 
+html[data-theme="highcontrast"] {
+  --bg-card: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: #ffff00;
+  --accent: #00ffff;
+  --accent-hover: #80ffff;
+  --accent-text: #000000;
+  --border-card: #ffffff;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -78,6 +88,14 @@ body {
   flex-direction: column;
   gap: 10px;
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Floating Island Style */
+.snooze-card.island-mode {
+  border-radius: 30px;
+  padding: 10px 18px;
+  width: 360px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
 .snooze-card.long-break {
@@ -179,7 +197,7 @@ body {
   color: var(--accent-text);
 }
 
-.snooze-btn.primary:hover {
+.snooze-btn.primary:hover:not(:disabled) {
   background-color: var(--accent-hover);
 }
 
@@ -189,6 +207,11 @@ body {
   border-color: rgba(128, 128, 128, 0.2);
 }
 
-.snooze-btn.secondary:hover {
+.snooze-btn.secondary:hover:not(:disabled) {
   background-color: rgba(128, 128, 128, 0.2);
+}
+
+.snooze-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

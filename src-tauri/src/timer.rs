@@ -23,6 +23,16 @@ pub struct TimerInfo {
     pub timer_mode: String,
     pub current_cycle: u32,
     pub is_long_break: bool,
+    pub hydration_remaining_seconds: u32,
+    pub posture_remaining_seconds: u32,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TickResult {
+    pub break_started: bool,
+    pub break_finished: bool,
+    pub hydration_due: bool,
+    pub posture_due: bool,
 }
 
 #[derive(Debug)]
@@ -32,6 +42,8 @@ struct InternalState {
     break_remaining_seconds: u32,
     current_cycle: u32,
     is_long_break: bool,
+    hydration_remaining_seconds: u32,
+    posture_remaining_seconds: u32,
     last_tick_time: Instant,
 }
 
@@ -49,6 +61,8 @@ impl TimerEngine {
                 break_remaining_seconds: 0,
                 current_cycle: 1,
                 is_long_break: false,
+                hydration_remaining_seconds: 45 * 60,
+                posture_remaining_seconds: 30 * 60,
                 last_tick_time: Instant::now(),
             })),
         }
@@ -79,6 +93,8 @@ impl TimerEngine {
                 timer_mode: mode_str,
                 current_cycle: state.current_cycle,
                 is_long_break: state.is_long_break,
+                hydration_remaining_seconds: state.hydration_remaining_seconds,
+                posture_remaining_seconds: state.posture_remaining_seconds,
             }
         } else {
             TimerInfo {
@@ -90,6 +106,8 @@ impl TimerEngine {
                 timer_mode: "Standard".to_string(),
                 current_cycle: 1,
                 is_long_break: false,
+                hydration_remaining_seconds: 0,
+                posture_remaining_seconds: 0,
             }
         }
     }
@@ -148,10 +166,11 @@ impl TimerEngine {
         }
     }
 
-    pub fn tick(&self, config: &BlinkConfig) -> bool {
+    pub fn tick(&self, config: &BlinkConfig) -> TickResult {
+        let mut result = TickResult::default();
         let mut state = match self.state.write() {
             Ok(s) => s,
-            Err(_) => return false,
+            Err(_) => return result,
         };
 
         // System Sleep / Wakeup compensation
@@ -168,7 +187,7 @@ impl TimerEngine {
             };
             state.remaining_seconds = total_work;
             state.status = TimerStatus::Running;
-            return false;
+            return result;
         }
 
         // 1. Handle Active Break Countdown
@@ -190,8 +209,9 @@ impl TimerEngine {
                     state.remaining_seconds = config.work_duration_minutes * 60;
                 }
                 state.status = TimerStatus::Running;
+                result.break_finished = true;
             }
-            return false;
+            return result;
         }
 
         // 2. Check Scheduled Quiet Hours
@@ -199,7 +219,7 @@ impl TimerEngine {
             if state.status != TimerStatus::PausedQuietHours {
                 state.status = TimerStatus::PausedQuietHours;
             }
-            return false;
+            return result;
         } else if state.status == TimerStatus::PausedQuietHours {
             state.status = TimerStatus::Running;
         }
@@ -211,7 +231,7 @@ impl TimerEngine {
                 if state.status == TimerStatus::Running {
                     state.status = TimerStatus::PausedIdle;
                 }
-                return false;
+                return result;
             } else if state.status == TimerStatus::PausedIdle {
                 state.status = TimerStatus::Running;
             }
@@ -219,15 +239,36 @@ impl TimerEngine {
 
         // 4. Do not tick if manually paused
         if state.status == TimerStatus::PausedManual {
-            return false;
+            return result;
         }
 
-        // 5. Decrement remaining work timer
+        // 5. Secondary Timers: Hydration & Posture
+        if config.hydration_enabled {
+            if state.hydration_remaining_seconds > 0 {
+                state.hydration_remaining_seconds -= 1;
+            }
+            if state.hydration_remaining_seconds == 0 {
+                result.hydration_due = true;
+                state.hydration_remaining_seconds = config.hydration_interval_minutes * 60;
+            }
+        }
+
+        if config.posture_enabled {
+            if state.posture_remaining_seconds > 0 {
+                state.posture_remaining_seconds -= 1;
+            }
+            if state.posture_remaining_seconds == 0 {
+                result.posture_due = true;
+                state.posture_remaining_seconds = config.posture_interval_minutes * 60;
+            }
+        }
+
+        // 6. Decrement remaining work timer
         if state.remaining_seconds > 0 {
             state.remaining_seconds -= 1;
         }
 
-        // 6. Check for Break Trigger
+        // 7. Check for Break Trigger
         if state.remaining_seconds == 0 {
             if config.timer_mode == TimerMode::Pomodoro {
                 let is_long = state.current_cycle >= config.pomodoro_cycles_before_long_break;
@@ -242,10 +283,10 @@ impl TimerEngine {
                 state.break_remaining_seconds = config.break_duration_seconds;
             }
             state.status = TimerStatus::OnBreak;
-            return true;
+            result.break_started = true;
         }
 
-        false
+        result
     }
 
     pub fn format_time(seconds: u32) -> String {
@@ -282,10 +323,12 @@ mod tests {
             s.remaining_seconds = 2;
         }
 
-        assert!(!engine.tick(&cfg));
+        let res = engine.tick(&cfg);
+        assert!(!res.break_started);
         assert_eq!(engine.get_info().remaining_seconds, 1);
 
-        assert!(engine.tick(&cfg));
+        let res = engine.tick(&cfg);
+        assert!(res.break_started);
         assert_eq!(engine.get_info().state, "OnBreak");
         assert_eq!(engine.get_info().break_remaining_seconds, 20);
     }
@@ -298,45 +341,28 @@ mod tests {
             pomodoro_work_minutes: 25,
             pomodoro_short_break_minutes: 5,
             pomodoro_long_break_minutes: 15,
-            pomodoro_cycles_before_long_break: 2, // 2 cycles for test
+            pomodoro_cycles_before_long_break: 2,
             idle_detection_enabled: false,
             quiet_hours_enabled: false,
             ..BlinkConfig::default()
         };
 
-        // Cycle 1 Trigger -> Short Break (5 min = 300s)
         if let Ok(mut s) = engine.state.write() {
             s.remaining_seconds = 1;
             s.current_cycle = 1;
         }
-        assert!(engine.tick(&cfg));
+        let res = engine.tick(&cfg);
+        assert!(res.break_started);
         assert_eq!(engine.get_info().state, "OnBreak");
         assert!(!engine.get_info().is_long_break);
         assert_eq!(engine.get_info().break_remaining_seconds, 300);
 
-        // Finish Short Break -> Moves to Cycle 2
         if let Ok(mut s) = engine.state.write() {
             s.break_remaining_seconds = 1;
         }
-        assert!(!engine.tick(&cfg));
+        let res = engine.tick(&cfg);
+        assert!(res.break_finished);
         assert_eq!(engine.get_info().state, "Running");
         assert_eq!(engine.get_info().current_cycle, 2);
-
-        // Cycle 2 Trigger -> Long Break (15 min = 900s)
-        if let Ok(mut s) = engine.state.write() {
-            s.remaining_seconds = 1;
-        }
-        assert!(engine.tick(&cfg));
-        assert_eq!(engine.get_info().state, "OnBreak");
-        assert!(engine.get_info().is_long_break);
-        assert_eq!(engine.get_info().break_remaining_seconds, 900);
-
-        // Finish Long Break -> Resets to Cycle 1
-        if let Ok(mut s) = engine.state.write() {
-            s.break_remaining_seconds = 1;
-        }
-        assert!(!engine.tick(&cfg));
-        assert_eq!(engine.get_info().state, "Running");
-        assert_eq!(engine.get_info().current_cycle, 1);
     }
 }

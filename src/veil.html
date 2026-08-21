@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blink — Focus Veil</title>
+  <link rel="stylesheet" href="veil.css">
+</head>
+<body>
+  <!-- 1. Ambient Edge Glow Mode -->
+  <div class="edge-glow-frame" id="edgeFrame" style="display: none;"></div>
+
+  <!-- 2. Focus Veil Dimmer Mode -->
+  <div class="veil-backdrop" id="veilBackdrop" style="display: none;">
+    <div class="veil-container">
+      <!-- Breathing Circle / Countdown -->
+      <div class="breathing-circle-wrapper">
+        <div class="breathing-glow-circle" id="breathingCircle"></div>
+        <div class="countdown-center-text">
+          <span class="countdown-seconds" id="countdownSeconds">20</span>
+          <span class="countdown-unit">seconds</span>
+        </div>
+      </div>
+
+      <!-- Title & Message -->
+      <h1 class="veil-title" id="veilTitle">Rest Your Eyes</h1>
+      <p class="veil-message" id="veilMessage">Look at something 20 feet away to relax your eye focusing muscles.</p>
+
+      <!-- Eye Exercise Prompts -->
+      <div class="exercise-card" id="exerciseCard">
+        <div class="exercise-icon" id="exerciseIcon">👀</div>
+        <div class="exercise-instruction" id="exerciseInstruction">Blink slowly and look far into the distance</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="veil-actions">
+        <button class="veil-btn secondary" id="btnVeilSnooze">
+          <span>💤 Snooze (5m)</span>
+        </button>
+        <button class="veil-btn primary" id="btnVeilDismiss">
+          <span id="dismissBtnLabel">✓ Done</span>
+        </button>
+      </div>
+
+      <!-- Strict Mode & Esc Hint -->
+      <div class="esc-hint">
+        <span id="strictLockoutLabel" style="display: none;">🔒 Break locked (<span id="lockoutSeconds">10</span>s) · </span>
+        Press <kbd>Esc</kbd> anytime to exit
+      </div>
+    </div>
+  </div>
+
+  <script src="veil.js"></script>
+</body>
+</html>

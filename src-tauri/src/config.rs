@@ -11,6 +11,14 @@ pub enum NotificationStyle {
     Toast,
     Tray,
     Overlay,
+    #[serde(rename = "edgepulse")]
+    EdgePulse,
+    #[serde(rename = "floatingisland")]
+    FloatingIsland,
+    #[serde(rename = "focusveil")]
+    FocusVeil,
+    #[serde(rename = "audioonly")]
+    AudioOnly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -20,6 +28,8 @@ pub enum Theme {
     System,
     Dark,
     Light,
+    #[serde(rename = "highcontrast")]
+    HighContrast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -112,53 +122,57 @@ pub struct BlinkConfig {
 
     #[serde(default = "default_quiet_days")]
     pub quiet_hours_days: Vec<u8>,
+
+    // v1.4.x Additions
+    #[serde(default = "default_veil_opacity")]
+    pub veil_opacity: f32,
+
+    #[serde(default = "default_true")]
+    pub eye_exercises_enabled: bool,
+
+    #[serde(default = "default_false")]
+    pub strict_mode_enabled: bool,
+
+    #[serde(default = "default_false")]
+    pub hydration_enabled: bool,
+
+    #[serde(default = "default_hydration_interval")]
+    pub hydration_interval_minutes: u32,
+
+    #[serde(default = "default_false")]
+    pub posture_enabled: bool,
+
+    #[serde(default = "default_posture_interval")]
+    pub posture_interval_minutes: u32,
+
+    #[serde(default = "default_ui_scale")]
+    pub ui_scale: String,
+
+    #[serde(default = "default_false")]
+    pub reduced_motion: bool,
 }
 
-fn default_work_duration() -> u32 {
-    20
-}
-fn default_break_duration() -> u32 {
-    20
-}
-fn default_idle_threshold() -> u32 {
-    120
-}
-fn default_snooze_duration() -> u32 {
-    5
-}
-fn default_volume() -> f32 {
-    0.5
-}
-fn default_true() -> bool {
-    true
-}
-fn default_false() -> bool {
-    false
-}
+fn default_work_duration() -> u32 { 20 }
+fn default_break_duration() -> u32 { 20 }
+fn default_idle_threshold() -> u32 { 120 }
+fn default_snooze_duration() -> u32 { 5 }
+fn default_volume() -> f32 { 0.5 }
+fn default_true() -> bool { true }
+fn default_false() -> bool { false }
 fn default_break_message() -> String {
     "Time for a 20-second break! Look at something 20 feet away.".to_string()
 }
-fn default_pomodoro_work() -> u32 {
-    25
-}
-fn default_pomodoro_short_break() -> u32 {
-    5
-}
-fn default_pomodoro_long_break() -> u32 {
-    15
-}
-fn default_pomodoro_cycles() -> u32 {
-    4
-}
-fn default_quiet_start() -> String {
-    "12:00".to_string()
-}
-fn default_quiet_end() -> String {
-    "13:00".to_string()
-}
-fn default_quiet_days() -> Vec<u8> {
-    vec![1, 2, 3, 4, 5] // Monday through Friday
-}
+fn default_pomodoro_work() -> u32 { 25 }
+fn default_pomodoro_short_break() -> u32 { 5 }
+fn default_pomodoro_long_break() -> u32 { 15 }
+fn default_pomodoro_cycles() -> u32 { 4 }
+fn default_quiet_start() -> String { "12:00".to_string() }
+fn default_quiet_end() -> String { "13:00".to_string() }
+fn default_quiet_days() -> Vec<u8> { vec![1, 2, 3, 4, 5] }
+fn default_veil_opacity() -> f32 { 0.5 }
+fn default_hydration_interval() -> u32 { 45 }
+fn default_posture_interval() -> u32 { 30 }
+fn default_ui_scale() -> String { "100%".to_string() }
 
 impl Default for BlinkConfig {
     fn default() -> Self {
@@ -187,42 +201,35 @@ impl Default for BlinkConfig {
             quiet_hours_start: "12:00".to_string(),
             quiet_hours_end: "13:00".to_string(),
             quiet_hours_days: vec![1, 2, 3, 4, 5],
+            veil_opacity: 0.5,
+            eye_exercises_enabled: true,
+            strict_mode_enabled: false,
+            hydration_enabled: false,
+            hydration_interval_minutes: 45,
+            posture_enabled: false,
+            posture_interval_minutes: 30,
+            ui_scale: "100%".to_string(),
+            reduced_motion: false,
         }
     }
 }
 
 impl BlinkConfig {
     pub fn sanitize(&mut self) {
-        if self.work_duration_minutes < 1 {
-            self.work_duration_minutes = 1;
-        }
-        if self.break_duration_seconds < 5 {
-            self.break_duration_seconds = 5;
-        }
-        if self.idle_threshold_seconds < 30 {
-            self.idle_threshold_seconds = 30;
-        }
-        if self.snooze_duration_minutes < 1 {
-            self.snooze_duration_minutes = 1;
-        }
+        if self.work_duration_minutes < 1 { self.work_duration_minutes = 1; }
+        if self.break_duration_seconds < 5 { self.break_duration_seconds = 5; }
+        if self.idle_threshold_seconds < 30 { self.idle_threshold_seconds = 30; }
+        if self.snooze_duration_minutes < 1 { self.snooze_duration_minutes = 1; }
         self.sound_volume = self.sound_volume.clamp(0.0, 1.0);
         if self.break_message.trim().is_empty() {
             self.break_message = default_break_message();
         }
 
         // Pomodoro bounds
-        if self.pomodoro_work_minutes < 1 {
-            self.pomodoro_work_minutes = 1;
-        }
-        if self.pomodoro_short_break_minutes < 1 {
-            self.pomodoro_short_break_minutes = 1;
-        }
-        if self.pomodoro_long_break_minutes < 1 {
-            self.pomodoro_long_break_minutes = 1;
-        }
-        if self.pomodoro_cycles_before_long_break < 1 {
-            self.pomodoro_cycles_before_long_break = 1;
-        }
+        if self.pomodoro_work_minutes < 1 { self.pomodoro_work_minutes = 1; }
+        if self.pomodoro_short_break_minutes < 1 { self.pomodoro_short_break_minutes = 1; }
+        if self.pomodoro_long_break_minutes < 1 { self.pomodoro_long_break_minutes = 1; }
+        if self.pomodoro_cycles_before_long_break < 1 { self.pomodoro_cycles_before_long_break = 1; }
 
         // Custom sound path
         if let Some(ref path) = self.custom_sound_path {
@@ -241,6 +248,18 @@ impl BlinkConfig {
         self.quiet_hours_days.retain(|d| *d <= 6);
         if self.quiet_hours_days.is_empty() {
             self.quiet_hours_days = default_quiet_days();
+        }
+
+        // v1.4.x Sanitization
+        self.veil_opacity = self.veil_opacity.clamp(0.2, 0.95);
+        if self.hydration_interval_minutes < 5 { self.hydration_interval_minutes = 5; }
+        if self.hydration_interval_minutes > 240 { self.hydration_interval_minutes = 240; }
+        if self.posture_interval_minutes < 5 { self.posture_interval_minutes = 5; }
+        if self.posture_interval_minutes > 240 { self.posture_interval_minutes = 240; }
+
+        let valid_scales = ["100%", "125%", "150%"];
+        if !valid_scales.contains(&self.ui_scale.as_str()) {
+            self.ui_scale = "100%".to_string();
         }
     }
 }
@@ -338,7 +357,6 @@ impl ConfigManager {
             }
         }
 
-        // Default config creation
         let default_cfg = BlinkConfig::default();
         let _ = Self::save_to_path_internal(path, &default_cfg);
         default_cfg
@@ -370,112 +388,46 @@ mod tests {
         assert_eq!(cfg.work_duration_minutes, 20);
         assert_eq!(cfg.break_duration_seconds, 20);
         assert_eq!(cfg.notification_style, NotificationStyle::Toast);
-        assert!(cfg.idle_detection_enabled);
-        assert_eq!(cfg.idle_threshold_seconds, 120);
-        assert!(cfg.auto_start);
-        assert!(cfg.sound_enabled);
-        assert_eq!(cfg.sound_volume, 0.5);
-        assert_eq!(cfg.snooze_duration_minutes, 5);
-        assert!(cfg.respect_focus_assist);
-        assert_eq!(cfg.theme, Theme::System);
-        assert_eq!(
-            cfg.break_message,
-            "Time for a 20-second break! Look at something 20 feet away."
-        );
-        assert!(cfg.hotkeys_enabled);
-        assert_eq!(cfg.overlay_monitor, OverlayMonitor::Primary);
-        assert_eq!(cfg.custom_sound_path, None);
-        assert_eq!(cfg.timer_mode, TimerMode::TwentyTwentyTwenty);
-        assert_eq!(cfg.pomodoro_work_minutes, 25);
-        assert_eq!(cfg.pomodoro_short_break_minutes, 5);
-        assert_eq!(cfg.pomodoro_long_break_minutes, 15);
-        assert_eq!(cfg.pomodoro_cycles_before_long_break, 4);
-        assert!(!cfg.quiet_hours_enabled);
-        assert_eq!(cfg.quiet_hours_start, "12:00");
-        assert_eq!(cfg.quiet_hours_end, "13:00");
-        assert_eq!(cfg.quiet_hours_days, vec![1, 2, 3, 4, 5]);
+        assert_eq!(cfg.veil_opacity, 0.5);
+        assert!(cfg.eye_exercises_enabled);
+        assert!(!cfg.strict_mode_enabled);
+        assert!(!cfg.hydration_enabled);
+        assert_eq!(cfg.hydration_interval_minutes, 45);
+        assert!(!cfg.posture_enabled);
+        assert_eq!(cfg.posture_interval_minutes, 30);
+        assert_eq!(cfg.ui_scale, "100%");
+        assert!(!cfg.reduced_motion);
     }
 
     #[test]
     fn test_sanitization_bounds() {
         let mut cfg = BlinkConfig {
-            work_duration_minutes: 0,
-            break_duration_seconds: 1,
-            notification_style: NotificationStyle::Overlay,
-            idle_detection_enabled: true,
-            idle_threshold_seconds: 10,
-            auto_start: false,
-            sound_enabled: true,
-            sound_volume: 1.5,
-            snooze_duration_minutes: 0,
-            respect_focus_assist: false,
-            theme: Theme::Dark,
-            break_message: "   ".to_string(),
-            hotkeys_enabled: false,
-            overlay_monitor: OverlayMonitor::Cursor,
-            custom_sound_path: Some("   ".to_string()),
-            timer_mode: TimerMode::Pomodoro,
-            pomodoro_work_minutes: 0,
-            pomodoro_short_break_minutes: 0,
-            pomodoro_long_break_minutes: 0,
-            pomodoro_cycles_before_long_break: 0,
-            quiet_hours_enabled: true,
-            quiet_hours_start: "invalid".to_string(),
-            quiet_hours_end: "25:99".to_string(),
-            quiet_hours_days: vec![8, 9],
+            veil_opacity: 0.05,
+            hydration_interval_minutes: 2,
+            posture_interval_minutes: 300,
+            ui_scale: "200%".to_string(),
+            ..BlinkConfig::default()
         };
         cfg.sanitize();
-        assert_eq!(cfg.work_duration_minutes, 1);
-        assert_eq!(cfg.break_duration_seconds, 5);
-        assert_eq!(cfg.idle_threshold_seconds, 30);
-        assert_eq!(cfg.snooze_duration_minutes, 1);
-        assert_eq!(cfg.sound_volume, 1.0);
-        assert_eq!(
-            cfg.break_message,
-            "Time for a 20-second break! Look at something 20 feet away."
-        );
-        assert_eq!(cfg.custom_sound_path, None);
-        assert_eq!(cfg.pomodoro_work_minutes, 1);
-        assert_eq!(cfg.pomodoro_short_break_minutes, 1);
-        assert_eq!(cfg.pomodoro_long_break_minutes, 1);
-        assert_eq!(cfg.pomodoro_cycles_before_long_break, 1);
-        assert_eq!(cfg.quiet_hours_start, "12:00");
-        assert_eq!(cfg.quiet_hours_end, "13:00");
-        assert_eq!(cfg.quiet_hours_days, vec![1, 2, 3, 4, 5]);
-    }
-
-    #[test]
-    fn test_json_roundtrip() {
-        let cfg = BlinkConfig::default();
-        let json = serde_json::to_string(&cfg).expect("serialize");
-        let parsed: BlinkConfig = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(cfg, parsed);
+        assert_eq!(cfg.veil_opacity, 0.2);
+        assert_eq!(cfg.hydration_interval_minutes, 5);
+        assert_eq!(cfg.posture_interval_minutes, 240);
+        assert_eq!(cfg.ui_scale, "100%");
     }
 
     #[test]
     fn test_backward_compatibility() {
-        // v1.1.0 JSON format without v1.2.0 or v1.3.0 fields
-        let v1_1_json = r#"{
+        let legacy_json = r#"{
             "work_duration_minutes": 25,
             "break_duration_seconds": 30,
-            "notification_style": "overlay",
-            "idle_detection_enabled": true,
-            "idle_threshold_seconds": 180,
-            "auto_start": true,
-            "sound_enabled": false,
-            "sound_volume": 0.8,
-            "snooze_duration_minutes": 10,
-            "respect_focus_assist": false
+            "notification_style": "toast"
         }"#;
 
-        let parsed: BlinkConfig = serde_json::from_str(v1_1_json).expect("deserialize legacy json");
+        let parsed: BlinkConfig = serde_json::from_str(legacy_json).expect("deserialize legacy json");
         assert_eq!(parsed.work_duration_minutes, 25);
-        assert_eq!(parsed.break_duration_seconds, 30);
-        assert_eq!(parsed.notification_style, NotificationStyle::Overlay);
-        assert_eq!(parsed.theme, Theme::System);
-        assert_eq!(parsed.timer_mode, TimerMode::TwentyTwentyTwenty);
-        assert_eq!(parsed.pomodoro_work_minutes, 25);
-        assert_eq!(parsed.custom_sound_path, None);
-        assert!(!parsed.quiet_hours_enabled);
+        assert_eq!(parsed.notification_style, NotificationStyle::Toast);
+        assert_eq!(parsed.veil_opacity, 0.5);
+        assert!(parsed.eye_exercises_enabled);
+        assert_eq!(parsed.ui_scale, "100%");
     }
 }

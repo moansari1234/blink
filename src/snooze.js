@@ -1,4 +1,4 @@
-// Blink — Snooze Overlay Logic (v1.3.0)
+// Blink — Snooze Overlay & Floating Island Logic (v1.4.0)
 
 const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (async () => {});
 const listen = window.__TAURI__?.event?.listen || (async () => () => {});
@@ -7,23 +7,36 @@ const getCurrentWindow = () => window.__TAURI__?.window?.getCurrentWindow?.() ||
   close: async () => console.log('Mock close overlay')
 };
 
-let autoDismissTimeout = 30; // 30 seconds auto-dismiss
+let autoDismissTimeout = 30;
 let remaining = autoDismissTimeout;
+let lockoutRemaining = 0;
 const bar = document.getElementById('countdownBar');
 const breakSubtitle = document.getElementById('breakSubtitle');
 const snoozeBtnLabel = document.getElementById('snoozeBtnLabel');
 const snoozeCard = document.getElementById('snoozeCard');
 const snoozeTitle = document.getElementById('snoozeTitle');
 const snoozeIcon = document.getElementById('snoozeIcon');
+const btnDismiss = document.getElementById('btnDismiss');
+const btnSnooze = document.getElementById('btnSnooze');
 
-// 1. Listen for custom break messages from backend
+// Listen for custom break messages from backend
 listen('break_message', (event) => {
   if (event?.payload && breakSubtitle) {
     breakSubtitle.textContent = event.payload;
   }
 });
 
-// 2. Fetch config & timer state to update theme, mode, and snooze duration label
+// Listen for overlay mode (corner vs island)
+listen('overlay_mode', (event) => {
+  const mode = event?.payload;
+  if (mode === 'island') {
+    snoozeCard?.classList.add('island-mode');
+  } else {
+    snoozeCard?.classList.remove('island-mode');
+  }
+});
+
+// Fetch config & timer state to update theme, mode, and snooze duration label
 async function loadOverlayConfig() {
   try {
     const cfg = await invoke('get_config');
@@ -31,7 +44,7 @@ async function loadOverlayConfig() {
 
     if (cfg) {
       // Theme
-      if (cfg.theme === 'dark' || cfg.theme === 'light') {
+      if (cfg.theme === 'dark' || cfg.theme === 'light' || cfg.theme === 'highcontrast') {
         document.documentElement.setAttribute('data-theme', cfg.theme);
       } else {
         document.documentElement.removeAttribute('data-theme');
@@ -57,6 +70,14 @@ async function loadOverlayConfig() {
         if (snoozeIcon) snoozeIcon.textContent = '👁';
       }
 
+      // Strict mode lockout
+      if (cfg.strict_mode_enabled) {
+        lockoutRemaining = 10;
+        setLockout(true);
+      } else {
+        setLockout(false);
+      }
+
       // Message fallback
       if (breakSubtitle && cfg.break_message && breakSubtitle.textContent.includes('20-20-20')) {
         const firstMsg = cfg.break_message.split('|')[0].trim();
@@ -68,11 +89,23 @@ async function loadOverlayConfig() {
   }
 }
 
-// 3. Countdown timer
+function setLockout(isLocked) {
+  if (btnDismiss) btnDismiss.disabled = isLocked;
+  if (btnSnooze) btnSnooze.disabled = isLocked;
+}
+
+// Countdown timer
 const interval = setInterval(async () => {
   remaining -= 0.1;
   const percentage = Math.max(0, (remaining / autoDismissTimeout) * 100);
   if (bar) bar.style.width = `${percentage}%`;
+
+  if (lockoutRemaining > 0) {
+    lockoutRemaining -= 0.1;
+    if (lockoutRemaining <= 0) {
+      setLockout(false);
+    }
+  }
 
   if (remaining <= 0) {
     clearInterval(interval);
@@ -96,8 +129,8 @@ async function dismissOverlay() {
   }, 220);
 }
 
-// 4. Button Handlers
-document.getElementById('btnDismiss')?.addEventListener('click', async () => {
+// Button Handlers
+btnDismiss?.addEventListener('click', async () => {
   clearInterval(interval);
   try {
     await invoke('record_break_action', { action: 'dismissed', durationSeconds: 20 });
@@ -108,7 +141,7 @@ document.getElementById('btnDismiss')?.addEventListener('click', async () => {
   dismissOverlay();
 });
 
-document.getElementById('btnSnooze')?.addEventListener('click', async () => {
+btnSnooze?.addEventListener('click', async () => {
   clearInterval(interval);
   try {
     await invoke('record_break_action', { action: 'snoozed', durationSeconds: 0 });
@@ -117,6 +150,13 @@ document.getElementById('btnSnooze')?.addEventListener('click', async () => {
     console.error('Snooze timer failed', e);
   }
   dismissOverlay();
+});
+
+// Emergency Esc key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    dismissOverlay();
+  }
 });
 
 // Initialization

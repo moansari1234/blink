@@ -106,6 +106,16 @@ pub fn test_sound(state: State<'_, AppState>, volume: f32, custom_path: Option<S
 }
 
 #[tauri::command]
+pub fn test_hydration_alert(app: AppHandle, state: State<'_, AppState>) {
+    state.notifications.dispatch_hydration_alert(&app);
+}
+
+#[tauri::command]
+pub fn test_posture_alert(app: AppHandle, state: State<'_, AppState>) {
+    state.notifications.dispatch_posture_alert(&app);
+}
+
+#[tauri::command]
 pub fn get_break_stats(state: State<'_, AppState>) -> BreakStats {
     state.history.get_stats()
 }
