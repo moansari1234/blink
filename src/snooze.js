@@ -1,4 +1,4 @@
-// Blink — Snooze Overlay Logic (v1.2.0)
+// Blink — Snooze Overlay Logic (v1.3.0)
 
 const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (async () => {});
 const listen = window.__TAURI__?.event?.listen || (async () => () => {});
@@ -13,6 +13,8 @@ const bar = document.getElementById('countdownBar');
 const breakSubtitle = document.getElementById('breakSubtitle');
 const snoozeBtnLabel = document.getElementById('snoozeBtnLabel');
 const snoozeCard = document.getElementById('snoozeCard');
+const snoozeTitle = document.getElementById('snoozeTitle');
+const snoozeIcon = document.getElementById('snoozeIcon');
 
 // 1. Listen for custom break messages from backend
 listen('break_message', (event) => {
@@ -21,10 +23,12 @@ listen('break_message', (event) => {
   }
 });
 
-// 2. Fetch config to update theme and snooze duration label
+// 2. Fetch config & timer state to update theme, mode, and snooze duration label
 async function loadOverlayConfig() {
   try {
     const cfg = await invoke('get_config');
+    const timerState = await invoke('get_timer_state');
+
     if (cfg) {
       // Theme
       if (cfg.theme === 'dark' || cfg.theme === 'light') {
@@ -36,6 +40,21 @@ async function loadOverlayConfig() {
       // Snooze label
       if (snoozeBtnLabel && cfg.snooze_duration_minutes) {
         snoozeBtnLabel.textContent = `💤 Snooze (${cfg.snooze_duration_minutes}m)`;
+      }
+
+      // Mode-specific labels
+      if (cfg.timer_mode === 'pomodoro') {
+        if (timerState?.is_long_break) {
+          if (snoozeTitle) snoozeTitle.textContent = '🍅 Pomodoro: Long Break!';
+          if (snoozeIcon) snoozeIcon.textContent = '🧘';
+          if (snoozeCard) snoozeCard.classList.add('long-break');
+        } else {
+          if (snoozeTitle) snoozeTitle.textContent = `🍅 Pomodoro: Cycle ${timerState?.current_cycle || 1} Break`;
+          if (snoozeIcon) snoozeIcon.textContent = '🍅';
+        }
+      } else {
+        if (snoozeTitle) snoozeTitle.textContent = 'Time for an eye break!';
+        if (snoozeIcon) snoozeIcon.textContent = '👁';
       }
 
       // Message fallback

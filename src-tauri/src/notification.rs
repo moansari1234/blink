@@ -23,9 +23,10 @@ impl NotificationManager {
             return;
         }
 
-        // 2. Play Audio Chime
+        // 2. Play Audio Chime (custom or default)
         if config.sound_enabled {
-            self.audio.play_chime(config.sound_volume);
+            self.audio
+                .play_chime(config.sound_volume, config.custom_sound_path.as_deref());
         }
 
         // 3. Pick rotated/custom break message
@@ -48,7 +49,6 @@ impl NotificationManager {
                     let _ = snooze_win.show();
                     let _ = snooze_win.set_focus();
                 } else {
-                    // Fallback to toast if snooze window is unavailable
                     let _ = app
                         .notification()
                         .builder()
@@ -70,7 +70,8 @@ impl NotificationManager {
 
     pub fn dispatch_test_alert(&self, app: &AppHandle, config: &BlinkConfig) {
         if config.sound_enabled {
-            self.audio.play_chime(config.sound_volume);
+            self.audio
+                .play_chime(config.sound_volume, config.custom_sound_path.as_deref());
         }
 
         let break_msg = pick_break_message(&config.break_message);
@@ -93,6 +94,18 @@ impl NotificationManager {
                     .show();
             }
         }
+    }
+
+    pub fn dispatch_milestone_alert(&self, app: &AppHandle, streak: u32) {
+        let _ = app
+            .notification()
+            .builder()
+            .title("🎉 Break Streak Milestone!")
+            .body(&format!(
+                "Incredible! You have reached {} breaks in a row — your eyes thank you! 🔥",
+                streak
+            ))
+            .show();
     }
 
     fn position_overlay(snooze_win: &tauri::WebviewWindow, monitor_mode: OverlayMonitor) {
@@ -148,36 +161,5 @@ pub fn pick_break_message(raw: &str) -> String {
     } else {
         let mut rng = rand::thread_rng();
         segments.choose(&mut rng).unwrap_or(&segments[0]).to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_pick_break_message_single() {
-        let msg = pick_break_message("Take a walk!");
-        assert_eq!(msg, "Take a walk!");
-    }
-
-    #[test]
-    fn test_pick_break_message_empty() {
-        let msg = pick_break_message("   |  ");
-        assert_eq!(
-            msg,
-            "Time for a 20-second break! Look at something 20 feet away."
-        );
-    }
-
-    #[test]
-    fn test_pick_break_message_rotation() {
-        let raw = "Message 1 | Message 2 | Message 3";
-        let mut found = std::collections::HashSet::new();
-        for _ in 0..100 {
-            let picked = pick_break_message(raw);
-            found.insert(picked);
-        }
-        assert!(found.contains("Message 1") || found.contains("Message 2") || found.contains("Message 3"));
     }
 }

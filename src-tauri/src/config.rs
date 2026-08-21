@@ -30,6 +30,14 @@ pub enum OverlayMonitor {
     Cursor,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TimerMode {
+    #[default]
+    TwentyTwentyTwenty,
+    Pomodoro,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BlinkConfig {
     #[serde(default = "default_work_duration")]
@@ -73,6 +81,37 @@ pub struct BlinkConfig {
 
     #[serde(default)]
     pub overlay_monitor: OverlayMonitor,
+
+    // v1.3.x Additions
+    #[serde(default)]
+    pub custom_sound_path: Option<String>,
+
+    #[serde(default)]
+    pub timer_mode: TimerMode,
+
+    #[serde(default = "default_pomodoro_work")]
+    pub pomodoro_work_minutes: u32,
+
+    #[serde(default = "default_pomodoro_short_break")]
+    pub pomodoro_short_break_minutes: u32,
+
+    #[serde(default = "default_pomodoro_long_break")]
+    pub pomodoro_long_break_minutes: u32,
+
+    #[serde(default = "default_pomodoro_cycles")]
+    pub pomodoro_cycles_before_long_break: u32,
+
+    #[serde(default = "default_false")]
+    pub quiet_hours_enabled: bool,
+
+    #[serde(default = "default_quiet_start")]
+    pub quiet_hours_start: String,
+
+    #[serde(default = "default_quiet_end")]
+    pub quiet_hours_end: String,
+
+    #[serde(default = "default_quiet_days")]
+    pub quiet_hours_days: Vec<u8>,
 }
 
 fn default_work_duration() -> u32 {
@@ -93,8 +132,32 @@ fn default_volume() -> f32 {
 fn default_true() -> bool {
     true
 }
+fn default_false() -> bool {
+    false
+}
 fn default_break_message() -> String {
     "Time for a 20-second break! Look at something 20 feet away.".to_string()
+}
+fn default_pomodoro_work() -> u32 {
+    25
+}
+fn default_pomodoro_short_break() -> u32 {
+    5
+}
+fn default_pomodoro_long_break() -> u32 {
+    15
+}
+fn default_pomodoro_cycles() -> u32 {
+    4
+}
+fn default_quiet_start() -> String {
+    "12:00".to_string()
+}
+fn default_quiet_end() -> String {
+    "13:00".to_string()
+}
+fn default_quiet_days() -> Vec<u8> {
+    vec![1, 2, 3, 4, 5] // Monday through Friday
 }
 
 impl Default for BlinkConfig {
@@ -114,6 +177,16 @@ impl Default for BlinkConfig {
             break_message: default_break_message(),
             hotkeys_enabled: true,
             overlay_monitor: OverlayMonitor::Primary,
+            custom_sound_path: None,
+            timer_mode: TimerMode::TwentyTwentyTwenty,
+            pomodoro_work_minutes: 25,
+            pomodoro_short_break_minutes: 5,
+            pomodoro_long_break_minutes: 15,
+            pomodoro_cycles_before_long_break: 4,
+            quiet_hours_enabled: false,
+            quiet_hours_start: "12:00".to_string(),
+            quiet_hours_end: "13:00".to_string(),
+            quiet_hours_days: vec![1, 2, 3, 4, 5],
         }
     }
 }
@@ -136,6 +209,51 @@ impl BlinkConfig {
         if self.break_message.trim().is_empty() {
             self.break_message = default_break_message();
         }
+
+        // Pomodoro bounds
+        if self.pomodoro_work_minutes < 1 {
+            self.pomodoro_work_minutes = 1;
+        }
+        if self.pomodoro_short_break_minutes < 1 {
+            self.pomodoro_short_break_minutes = 1;
+        }
+        if self.pomodoro_long_break_minutes < 1 {
+            self.pomodoro_long_break_minutes = 1;
+        }
+        if self.pomodoro_cycles_before_long_break < 1 {
+            self.pomodoro_cycles_before_long_break = 1;
+        }
+
+        // Custom sound path
+        if let Some(ref path) = self.custom_sound_path {
+            if path.trim().is_empty() {
+                self.custom_sound_path = None;
+            }
+        }
+
+        // Quiet hours validation
+        if !is_valid_hhmm(&self.quiet_hours_start) {
+            self.quiet_hours_start = default_quiet_start();
+        }
+        if !is_valid_hhmm(&self.quiet_hours_end) {
+            self.quiet_hours_end = default_quiet_end();
+        }
+        self.quiet_hours_days.retain(|d| *d <= 6);
+        if self.quiet_hours_days.is_empty() {
+            self.quiet_hours_days = default_quiet_days();
+        }
+    }
+}
+
+fn is_valid_hhmm(s: &str) -> bool {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    if let (Ok(h), Ok(m)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+        h < 24 && m < 60
+    } else {
+        false
     }
 }
 
@@ -266,6 +384,16 @@ mod tests {
         );
         assert!(cfg.hotkeys_enabled);
         assert_eq!(cfg.overlay_monitor, OverlayMonitor::Primary);
+        assert_eq!(cfg.custom_sound_path, None);
+        assert_eq!(cfg.timer_mode, TimerMode::TwentyTwentyTwenty);
+        assert_eq!(cfg.pomodoro_work_minutes, 25);
+        assert_eq!(cfg.pomodoro_short_break_minutes, 5);
+        assert_eq!(cfg.pomodoro_long_break_minutes, 15);
+        assert_eq!(cfg.pomodoro_cycles_before_long_break, 4);
+        assert!(!cfg.quiet_hours_enabled);
+        assert_eq!(cfg.quiet_hours_start, "12:00");
+        assert_eq!(cfg.quiet_hours_end, "13:00");
+        assert_eq!(cfg.quiet_hours_days, vec![1, 2, 3, 4, 5]);
     }
 
     #[test]
@@ -285,6 +413,16 @@ mod tests {
             break_message: "   ".to_string(),
             hotkeys_enabled: false,
             overlay_monitor: OverlayMonitor::Cursor,
+            custom_sound_path: Some("   ".to_string()),
+            timer_mode: TimerMode::Pomodoro,
+            pomodoro_work_minutes: 0,
+            pomodoro_short_break_minutes: 0,
+            pomodoro_long_break_minutes: 0,
+            pomodoro_cycles_before_long_break: 0,
+            quiet_hours_enabled: true,
+            quiet_hours_start: "invalid".to_string(),
+            quiet_hours_end: "25:99".to_string(),
+            quiet_hours_days: vec![8, 9],
         };
         cfg.sanitize();
         assert_eq!(cfg.work_duration_minutes, 1);
@@ -296,6 +434,14 @@ mod tests {
             cfg.break_message,
             "Time for a 20-second break! Look at something 20 feet away."
         );
+        assert_eq!(cfg.custom_sound_path, None);
+        assert_eq!(cfg.pomodoro_work_minutes, 1);
+        assert_eq!(cfg.pomodoro_short_break_minutes, 1);
+        assert_eq!(cfg.pomodoro_long_break_minutes, 1);
+        assert_eq!(cfg.pomodoro_cycles_before_long_break, 1);
+        assert_eq!(cfg.quiet_hours_start, "12:00");
+        assert_eq!(cfg.quiet_hours_end, "13:00");
+        assert_eq!(cfg.quiet_hours_days, vec![1, 2, 3, 4, 5]);
     }
 
     #[test]
@@ -308,7 +454,7 @@ mod tests {
 
     #[test]
     fn test_backward_compatibility() {
-        // v1.1.0 JSON format without new v1.2.0 fields
+        // v1.1.0 JSON format without v1.2.0 or v1.3.0 fields
         let v1_1_json = r#"{
             "work_duration_minutes": 25,
             "break_duration_seconds": 30,
@@ -327,8 +473,9 @@ mod tests {
         assert_eq!(parsed.break_duration_seconds, 30);
         assert_eq!(parsed.notification_style, NotificationStyle::Overlay);
         assert_eq!(parsed.theme, Theme::System);
-        assert_eq!(parsed.break_message, "Time for a 20-second break! Look at something 20 feet away.");
-        assert!(parsed.hotkeys_enabled);
-        assert_eq!(parsed.overlay_monitor, OverlayMonitor::Primary);
+        assert_eq!(parsed.timer_mode, TimerMode::TwentyTwentyTwenty);
+        assert_eq!(parsed.pomodoro_work_minutes, 25);
+        assert_eq!(parsed.custom_sound_path, None);
+        assert!(!parsed.quiet_hours_enabled);
     }
 }

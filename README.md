@@ -34,23 +34,27 @@ This allows your eye focusing muscles (ciliary muscles) to completely relax and 
 
 - **⚡ Ultra-Lightweight**: Uses `< 38 MB` RAM and `< 0.1%` CPU. Runs quietly in your system tray.
 - **🔒 100% Offline & Private**: Zero telemetry, zero tracking, zero network connections.
+- **👁 20-20-20 Rule & 🍅 Pomodoro Mode**: Switch seamlessly between standard 20-20-20 eye breaks and full Pomodoro focus intervals (25m work, 5m short break, 15m long break after 4 cycles).
+- **🎵 Custom Sound Chimes**: Pick your own `.wav`, `.mp3`, `.ogg`, or `.flac` audio files for break alerts with graceful built-in fallback.
+- **🔥 Live Streak Counter & Milestones**: See your active break streak in the system tray menu and earn celebratory toasts at 5, 10, 25, 50, and 100 breaks in a row.
+- **🌙 Scheduled Quiet Hours**: Configure automatic Do Not Disturb periods (e.g., lunch breaks) with day-of-week filtering to pause reminders automatically.
+- **📤 Settings Backup & Restore**: Export and import your complete configuration to/from JSON via native file dialogs.
 - **📊 Break Stats & History Dashboard**: 90-day local history tracking with streak counter, daily averages, and a crisp 7-day activity chart.
 - **🎨 Dark, Light, & System Themes**: Seamless dark mode and light mode overrides across the settings interface and screen overlays.
 - **💬 Custom Break Messages**: Set custom reminder messages with `|` pipe rotation support (e.g. `Look outside | Stretch your arms | Drink water`).
 - **⌨️ Global Keyboard Shortcuts**: `Ctrl+Shift+B` to Pause/Resume and `Ctrl+Shift+N` to Skip Break without opening any menus.
 - **🖥️ Multi-Monitor Overlay Positioning**: Automatically positions the corner overlay prompt on your primary display or whichever monitor contains your active cursor.
-- **⏱ Live Tray Countdown & Tooltip**: Dynamic system tray hover tooltip showing live remaining time and timer state.
+- **⏱ Live Tray Countdown & Tooltip**: Dynamic system tray hover tooltip showing live remaining time, timer state, and current streak.
 - **🟢🟡🔴 Dynamic Status Icons**:
   - 🟢 **Green**: Timer actively running
-  - 🟡 **Yellow**: Paused (idle detected or manually paused)
-  - 🔴 **Red**: Break time!
+  - 🟡 **Yellow**: Paused (idle detected, quiet hours, or manually paused)
+  - 🔴 **Red**: Break time! (with distinct Pomodoro long break indicators)
 - **💤 Smart Idle Detection**: Pauses automatically when you are away from keyboard/mouse or when your screen is locked, and resumes exactly where you left off.
 - **🔔 Configurable Notifications**:
   - **Native Windows Toast**: Clean OS notifications.
   - **System Tray Balloon**: Lightweight tray notification.
   - **Interactive Overlay**: Gentle screen corner prompt with smooth 300ms animations, countdown bar, and direct **Snooze** & **Dismiss** buttons.
 - **🔕 Windows Focus Assist Aware**: Respects "Do Not Disturb" / Focus Assist modes so it won't interrupt high-stakes presentations or full-screen gaming sessions.
-- **🔔 Gentle Bell Chime**: Calming, soft harmonic chime that alerts you without jarring loud beeps. Volume adjustable or muteable.
 - **🔄 Instant Hot-Reload**: Settings changes take effect immediately without restarting the app. You can also edit `%APPDATA%\Blink\config.json` directly!
 - **🚀 Auto-Start on Login**: Optionally launches minimized to tray when your PC boots.
 - **🔄 Built-in Update Checker**: One-click "Check for Updates" inside Settings that checks GitHub Releases and provides instant download buttons.
@@ -80,7 +84,17 @@ Blink stores its configuration in standard JSON format at:
   "theme": "system",
   "break_message": "Time for a 20-second break! Look at something 20 feet away.",
   "hotkeys_enabled": true,
-  "overlay_monitor": "primary"
+  "overlay_monitor": "primary",
+  "custom_sound_path": null,
+  "timer_mode": "twentytwentytwenty",
+  "pomodoro_work_minutes": 25,
+  "pomodoro_short_break_minutes": 5,
+  "pomodoro_long_break_minutes": 15,
+  "pomodoro_cycles_before_long_break": 4,
+  "quiet_hours_enabled": false,
+  "quiet_hours_start": "12:00",
+  "quiet_hours_end": "13:00",
+  "quiet_hours_days": [1, 2, 3, 4, 5]
 }
 ```
 

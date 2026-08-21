@@ -10,9 +10,9 @@ pub mod tray;
 
 use audio::AudioPlayer;
 use commands::{
-    get_break_stats, get_config, get_timer_state, open_url, pause_timer, record_break_action,
-    reset_timer, resume_timer, save_config, snooze_timer, test_notification, test_sound,
-    AppState,
+    export_config, get_break_stats, get_config, get_timer_state, import_config, open_url,
+    pause_timer, record_break_action, reset_timer, resume_timer, save_config, select_custom_sound,
+    snooze_timer, test_notification, test_sound, AppState,
 };
 use config::ConfigManager;
 use history::HistoryManager;
@@ -30,7 +30,13 @@ pub fn run() {
     let config_mgr = Arc::new(ConfigManager::new());
     let initial_config = config_mgr.get_config();
 
-    let timer = Arc::new(TimerEngine::new(initial_config.work_duration_minutes));
+    let initial_work = if initial_config.timer_mode == config::TimerMode::Pomodoro {
+        initial_config.pomodoro_work_minutes
+    } else {
+        initial_config.work_duration_minutes
+    };
+
+    let timer = Arc::new(TimerEngine::new(initial_work));
     let notifications = Arc::new(NotificationManager::new());
     let audio = Arc::new(AudioPlayer::new());
     let history = Arc::new(HistoryManager::new());
@@ -107,7 +113,12 @@ pub fn run() {
                     }
                     "reset" => {
                         let cfg = config_menu.get_config();
-                        timer_menu.reset(cfg.work_duration_minutes);
+                        let work = if cfg.timer_mode == config::TimerMode::Pomodoro {
+                            cfg.pomodoro_work_minutes
+                        } else {
+                            cfg.work_duration_minutes
+                        };
+                        timer_menu.reset(work);
                     }
                     "snooze" => {
                         let cfg = config_menu.get_config();
@@ -150,11 +161,20 @@ pub fn run() {
                     // Check if break just finished (was on break -> now running)
                     let current_state = timer_loop.get_info().state;
                     if was_on_break && current_state == "Running" {
-                        let _ = history_loop.record_break("completed", current_cfg.break_duration_seconds);
+                        let break_secs = if current_cfg.timer_mode == config::TimerMode::Pomodoro {
+                            current_cfg.pomodoro_short_break_minutes * 60
+                        } else {
+                            current_cfg.break_duration_seconds
+                        };
+
+                        let (_, milestone) = history_loop.record_break("completed", break_secs);
+                        if let Some(streak_val) = milestone {
+                            notif_loop.dispatch_milestone_alert(&app_handle_loop, streak_val);
+                        }
                     }
                     was_on_break = current_state == "OnBreak";
 
-                    tray_loop.update(&timer_loop, &current_cfg);
+                    tray_loop.update(&timer_loop, &current_cfg, history_loop.get_current_streak());
                 }
             });
 
@@ -181,6 +201,9 @@ pub fn run() {
             test_sound,
             get_break_stats,
             record_break_action,
+            select_custom_sound,
+            export_config,
+            import_config,
             open_url,
         ])
         .run(tauri::generate_context!())

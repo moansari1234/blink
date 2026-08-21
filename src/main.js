@@ -1,4 +1,4 @@
-// Blink — Settings UI Logic (v1.2.0)
+// Blink — Settings UI Logic (v1.3.0)
 
 // Tauri invoke helper with fallback for web browser testing
 const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (async (cmd, args) => {
@@ -18,7 +18,17 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       theme: 'system',
       break_message: 'Time for a 20-second break! Look at something 20 feet away.',
       hotkeys_enabled: true,
-      overlay_monitor: 'primary'
+      overlay_monitor: 'primary',
+      custom_sound_path: null,
+      timer_mode: 'twentytwentytwenty',
+      pomodoro_work_minutes: 25,
+      pomodoro_short_break_minutes: 5,
+      pomodoro_long_break_minutes: 15,
+      pomodoro_cycles_before_long_break: 4,
+      quiet_hours_enabled: false,
+      quiet_hours_start: '12:00',
+      quiet_hours_end: '13:00',
+      quiet_hours_days: [1, 2, 3, 4, 5]
     };
   }
   if (cmd === 'get_timer_state') {
@@ -26,7 +36,10 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
       remaining_seconds: 1200,
       formatted_time: '20:00',
       state: 'Running',
-      is_paused: false
+      is_paused: false,
+      timer_mode: 'Standard',
+      current_cycle: 1,
+      is_long_break: false
     };
   }
   if (cmd === 'get_break_stats') {
@@ -53,7 +66,8 @@ const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke || (as
 // State
 let currentConfig = null;
 let isTimerPaused = false;
-const CURRENT_VERSION = '1.2.0';
+let selectedCustomSound = null;
+const CURRENT_VERSION = '1.3.0';
 
 // DOM Elements
 const tabButtons = document.querySelectorAll('.tab-btn');
@@ -76,6 +90,23 @@ const idleThresholdRow = document.getElementById('idleThresholdRow');
 const themeSelect = document.getElementById('themeSelect');
 const btnRefreshStats = document.getElementById('btnRefreshStats');
 
+// v1.3.0 Elements
+const mode202020 = document.getElementById('mode202020');
+const modePomodoro = document.getElementById('modePomodoro');
+const section202020 = document.getElementById('section202020');
+const sectionPomodoro = document.getElementById('sectionPomodoro');
+const customSoundDisplay = document.getElementById('customSoundDisplay');
+const btnBrowseSound = document.getElementById('btnBrowseSound');
+const btnClearSound = document.getElementById('btnClearSound');
+const quietHoursEnabled = document.getElementById('quietHoursEnabled');
+const quietHoursControls = document.getElementById('quietHoursControls');
+const daySelector = document.getElementById('daySelector');
+const btnExportConfig = document.getElementById('btnExportConfig');
+const btnImportConfig = document.getElementById('btnImportConfig');
+const confirmModal = document.getElementById('confirmModal');
+const btnCancelReset = document.getElementById('btnCancelReset');
+const btnConfirmReset = document.getElementById('btnConfirmReset');
+
 // Theme Management
 function applyTheme(theme) {
   if (theme === 'dark' || theme === 'light') {
@@ -87,6 +118,108 @@ function applyTheme(theme) {
 
 themeSelect?.addEventListener('change', (e) => {
   applyTheme(e.target.value);
+});
+
+// Mode Toggle Handler (20-20-20 vs Pomodoro)
+function updateModeSections(mode) {
+  if (mode === 'pomodoro') {
+    section202020.style.display = 'none';
+    sectionPomodoro.style.display = 'block';
+  } else {
+    section202020.style.display = 'block';
+    sectionPomodoro.style.display = 'none';
+  }
+}
+
+mode202020?.addEventListener('change', () => updateModeSections('twentytwentytwenty'));
+modePomodoro?.addEventListener('change', () => updateModeSections('pomodoro'));
+
+// Custom Sound Picker
+btnBrowseSound?.addEventListener('click', async () => {
+  try {
+    const pickedPath = await invoke('select_custom_sound');
+    if (pickedPath) {
+      selectedCustomSound = pickedPath;
+      updateSoundUI(pickedPath);
+      setStatus('Custom sound selected (click Save to apply)', 'normal');
+    }
+  } catch (err) {
+    console.error('Failed to pick sound file:', err);
+  }
+});
+
+btnClearSound?.addEventListener('click', () => {
+  selectedCustomSound = null;
+  updateSoundUI(null);
+  setStatus('Reset to default bell chime (click Save to apply)', 'normal');
+});
+
+function updateSoundUI(path) {
+  if (path) {
+    const filename = path.split(/[\\/]/).pop();
+    customSoundDisplay.textContent = `🎵 ${filename}`;
+    customSoundDisplay.title = path;
+    btnClearSound.style.display = 'inline-flex';
+  } else {
+    customSoundDisplay.textContent = 'Default: Built-in Bell Chime';
+    customSoundDisplay.title = '';
+    btnClearSound.style.display = 'none';
+  }
+}
+
+// Quiet Hours Toggle
+quietHoursEnabled?.addEventListener('change', (e) => {
+  quietHoursControls.style.display = e.target.checked ? 'block' : 'none';
+});
+
+// Day Selector (M, T, W, T, F, S, S)
+daySelector?.querySelectorAll('.day-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('active');
+  });
+});
+
+function getSelectedDays() {
+  const days = [];
+  daySelector?.querySelectorAll('.day-btn.active').forEach(btn => {
+    days.push(parseInt(btn.getAttribute('data-day'), 10));
+  });
+  return days.length > 0 ? days : [1, 2, 3, 4, 5];
+}
+
+function setSelectedDays(days) {
+  const daySet = new Set(days || [1, 2, 3, 4, 5]);
+  daySelector?.querySelectorAll('.day-btn').forEach(btn => {
+    const dayNum = parseInt(btn.getAttribute('data-day'), 10);
+    btn.classList.toggle('active', daySet.has(dayNum));
+  });
+}
+
+// Config Export / Import
+btnExportConfig?.addEventListener('click', async () => {
+  try {
+    const savedPath = await invoke('export_config');
+    if (savedPath) {
+      setStatus(`Exported settings to ${savedPath}`, 'success');
+    }
+  } catch (err) {
+    console.error('Export config failed:', err);
+    setStatus(`Export failed: ${err}`, 'error');
+  }
+});
+
+btnImportConfig?.addEventListener('click', async () => {
+  try {
+    const importedCfg = await invoke('import_config');
+    if (importedCfg) {
+      currentConfig = importedCfg;
+      populateForm(importedCfg);
+      setStatus('Settings imported and applied successfully!', 'success');
+    }
+  } catch (err) {
+    console.error('Import config failed:', err);
+    setStatus(`Import failed: ${err}`, 'error');
+  }
 });
 
 // Tab Navigation
@@ -137,18 +270,45 @@ async function loadConfig() {
 function populateForm(cfg) {
   if (!cfg) return;
 
+  // Mode
+  const mode = cfg.timer_mode || 'twentytwentytwenty';
+  if (mode === 'pomodoro') {
+    modePomodoro.checked = true;
+  } else {
+    mode202020.checked = true;
+  }
+  updateModeSections(mode);
+
+  // 20-20-20
   document.getElementById('workDuration').value = cfg.work_duration_minutes;
   document.getElementById('breakDuration').value = cfg.break_duration_seconds;
+
+  // Pomodoro
+  document.getElementById('pomodoroWork').value = cfg.pomodoro_work_minutes || 25;
+  document.getElementById('pomodoroShortBreak').value = cfg.pomodoro_short_break_minutes || 5;
+  document.getElementById('pomodoroLongBreak').value = cfg.pomodoro_long_break_minutes || 15;
+  document.getElementById('pomodoroCycles').value = cfg.pomodoro_cycles_before_long_break || 4;
+
+  // Custom Sound
+  selectedCustomSound = cfg.custom_sound_path || null;
+  updateSoundUI(selectedCustomSound);
+
+  // Quiet Hours
+  quietHoursEnabled.checked = !!cfg.quiet_hours_enabled;
+  quietHoursControls.style.display = cfg.quiet_hours_enabled ? 'block' : 'none';
+  document.getElementById('quietStart').value = cfg.quiet_hours_start || '12:00';
+  document.getElementById('quietEnd').value = cfg.quiet_hours_end || '13:00';
+  setSelectedDays(cfg.quiet_hours_days);
+
+  // General & Notifications
   document.getElementById('snoozeDuration').value = cfg.snooze_duration_minutes;
   document.getElementById('soundEnabled').checked = cfg.sound_enabled;
   document.getElementById('soundVolume').value = cfg.sound_volume;
   volumeValueDisplay.textContent = `${Math.round(cfg.sound_volume * 100)}%`;
 
-  // Notification style radio
   const styleRadio = document.querySelector(`input[name="notificationStyle"][value="${cfg.notification_style}"]`);
   if (styleRadio) styleRadio.checked = true;
 
-  // New v1.2.x fields
   document.getElementById('breakMessage').value = cfg.break_message || '';
   document.getElementById('overlayMonitor').value = cfg.overlay_monitor || 'primary';
   document.getElementById('themeSelect').value = cfg.theme || 'system';
@@ -168,6 +328,7 @@ function populateForm(cfg) {
 // Read form controls into config object
 function readForm() {
   const selectedStyle = document.querySelector('input[name="notificationStyle"]:checked')?.value || 'toast';
+  const selectedMode = document.querySelector('input[name="timerMode"]:checked')?.value || 'twentytwentytwenty';
 
   return {
     work_duration_minutes: Math.max(1, parseInt(document.getElementById('workDuration').value, 10) || 20),
@@ -183,7 +344,17 @@ function readForm() {
     theme: document.getElementById('themeSelect').value || 'system',
     break_message: document.getElementById('breakMessage').value.trim() || 'Time for a 20-second break! Look at something 20 feet away.',
     hotkeys_enabled: document.getElementById('hotkeysEnabled').checked,
-    overlay_monitor: document.getElementById('overlayMonitor').value || 'primary'
+    overlay_monitor: document.getElementById('overlayMonitor').value || 'primary',
+    custom_sound_path: selectedCustomSound,
+    timer_mode: selectedMode,
+    pomodoro_work_minutes: Math.max(1, parseInt(document.getElementById('pomodoroWork').value, 10) || 25),
+    pomodoro_short_break_minutes: Math.max(1, parseInt(document.getElementById('pomodoroShortBreak').value, 10) || 5),
+    pomodoro_long_break_minutes: Math.max(1, parseInt(document.getElementById('pomodoroLongBreak').value, 10) || 15),
+    pomodoro_cycles_before_long_break: Math.max(1, parseInt(document.getElementById('pomodoroCycles').value, 10) || 4),
+    quiet_hours_enabled: quietHoursEnabled.checked,
+    quiet_hours_start: document.getElementById('quietStart').value || '12:00',
+    quiet_hours_end: document.getElementById('quietEnd').value || '13:00',
+    quiet_hours_days: getSelectedDays()
   };
 }
 
@@ -201,8 +372,17 @@ async function saveConfig() {
   }
 }
 
-// Reset Defaults
-function resetDefaults() {
+// Reset Defaults Modal Flow
+btnResetDefaults.addEventListener('click', () => {
+  confirmModal.style.display = 'flex';
+});
+
+btnCancelReset.addEventListener('click', () => {
+  confirmModal.style.display = 'none';
+});
+
+btnConfirmReset.addEventListener('click', () => {
+  confirmModal.style.display = 'none';
   const defaults = {
     work_duration_minutes: 20,
     break_duration_seconds: 20,
@@ -217,11 +397,21 @@ function resetDefaults() {
     theme: 'system',
     break_message: 'Time for a 20-second break! Look at something 20 feet away.',
     hotkeys_enabled: true,
-    overlay_monitor: 'primary'
+    overlay_monitor: 'primary',
+    custom_sound_path: null,
+    timer_mode: 'twentytwentytwenty',
+    pomodoro_work_minutes: 25,
+    pomodoro_short_break_minutes: 5,
+    pomodoro_long_break_minutes: 15,
+    pomodoro_cycles_before_long_break: 4,
+    quiet_hours_enabled: false,
+    quiet_hours_start: '12:00',
+    quiet_hours_end: '13:00',
+    quiet_hours_days: [1, 2, 3, 4, 5]
   };
   populateForm(defaults);
   setStatus('Reset to default values (click Save to apply)', 'normal');
-}
+});
 
 // Helper: Status message in footer
 function setStatus(text, type = 'normal') {
@@ -245,7 +435,7 @@ async function updateTimerStatus() {
       statusDot.className = 'status-dot';
       if (state.state === 'Running') {
         statusDot.classList.add('green');
-      } else if (state.state === 'PausedIdle' || state.state === 'PausedManual') {
+      } else if (state.state === 'PausedIdle' || state.state === 'PausedManual' || state.state === 'PausedQuietHours') {
         statusDot.classList.add('yellow');
       } else if (state.state === 'OnBreak') {
         statusDot.classList.add('red');
@@ -292,7 +482,6 @@ function drawStatsChart(days) {
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
 
-  // Set high-DPI canvas buffer size
   canvas.width = (rect.width || 380) * dpr;
   canvas.height = (rect.height || 130) * dpr;
   ctx.scale(dpr, dpr);
@@ -320,12 +509,11 @@ function drawStatsChart(days) {
   const totalSpacing = width - (numBars * barWidth);
   const gap = totalSpacing / (numBars + 1);
 
-  // Compute computed style colors
   const computed = getComputedStyle(document.documentElement);
   const accentColor = computed.getPropertyValue('--accent').trim() || '#60cdff';
   const textSecColor = computed.getPropertyValue('--text-secondary').trim() || '#888888';
 
-  // Draw grid lines
+  // Grid line
   ctx.strokeStyle = 'rgba(128, 128, 128, 0.15)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -333,14 +521,13 @@ function drawStatsChart(days) {
   ctx.lineTo(width - gap / 2, height - paddingBottom);
   ctx.stroke();
 
-  // Draw bars
+  // Bars
   days.forEach((dayData, index) => {
     const x = gap + index * (barWidth + gap);
     const count = dayData.count || 0;
     const barHeight = Math.max(4, (count / maxCount) * chartHeight);
     const y = height - paddingBottom - barHeight;
 
-    // Bar fill with subtle gradient
     const gradient = ctx.createLinearGradient(0, y, 0, height - paddingBottom);
     gradient.addColorStop(0, accentColor);
     gradient.addColorStop(1, accentColor + '99');
@@ -349,13 +536,11 @@ function drawStatsChart(days) {
     roundRect(ctx, x, y, barWidth, barHeight, 4);
     ctx.fill();
 
-    // Value count label above bar
     ctx.fillStyle = accentColor;
     ctx.font = 'bold 10px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(count > 0 ? `${count}` : '0', x + barWidth / 2, y - 4);
 
-    // Day of week label below bar
     ctx.fillStyle = textSecColor;
     ctx.font = '10px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
@@ -377,13 +562,12 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 // Event Listeners
 btnSaveConfig.addEventListener('click', saveConfig);
-btnResetDefaults.addEventListener('click', resetDefaults);
 
 btnTestSound.addEventListener('click', async () => {
   const volume = parseFloat(document.getElementById('soundVolume').value) || 0.5;
   try {
-    await invoke('test_sound', { volume });
-    setStatus('Playing test chime...', 'normal');
+    await invoke('test_sound', { volume, customPath: selectedCustomSound });
+    setStatus('Playing chime preview...', 'normal');
   } catch (err) {
     console.error('Test sound error:', err);
   }
@@ -415,7 +599,7 @@ resetTimerBtn.addEventListener('click', async () => {
   try {
     await invoke('reset_timer');
     updateTimerStatus();
-    setStatus('Timer reset to interval start', 'normal');
+    setStatus('Timer reset', 'normal');
   } catch (err) {
     console.error('Reset timer failed:', err);
   }

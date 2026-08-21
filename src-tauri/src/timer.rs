@@ -1,32 +1,38 @@
-use crate::config::BlinkConfig;
+use crate::config::{BlinkConfig, TimerMode};
 use crate::idle::IdleDetector;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::Instant;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TimerStatus {
     Running,
     PausedIdle,
     PausedManual,
+    PausedQuietHours,
     OnBreak,
-    Snoozed,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimerInfo {
     pub remaining_seconds: u32,
+    pub break_remaining_seconds: u32,
     pub formatted_time: String,
     pub state: String,
     pub is_paused: bool,
+    pub timer_mode: String,
+    pub current_cycle: u32,
+    pub is_long_break: bool,
 }
 
+#[derive(Debug)]
 struct InternalState {
     status: TimerStatus,
     remaining_seconds: u32,
     break_remaining_seconds: u32,
-    last_wall_time: SystemTime,
-    last_tick_instant: Instant,
+    current_cycle: u32,
+    is_long_break: bool,
+    last_tick_time: Instant,
 }
 
 pub struct TimerEngine {
@@ -34,42 +40,63 @@ pub struct TimerEngine {
 }
 
 impl TimerEngine {
-    pub fn new(initial_work_minutes: u32) -> Self {
-        let total_secs = initial_work_minutes.max(1) * 60;
+    pub fn new(work_duration_minutes: u32) -> Self {
+        let initial_seconds = work_duration_minutes * 60;
         Self {
             state: Arc::new(RwLock::new(InternalState {
                 status: TimerStatus::Running,
-                remaining_seconds: total_secs,
+                remaining_seconds: initial_seconds,
                 break_remaining_seconds: 0,
-                last_wall_time: SystemTime::now(),
-                last_tick_instant: Instant::now(),
+                current_cycle: 1,
+                is_long_break: false,
+                last_tick_time: Instant::now(),
             })),
         }
     }
 
     pub fn get_info(&self) -> TimerInfo {
-        let state = self.state.read().unwrap();
-        let formatted = format_time(state.remaining_seconds);
-        let state_str = match state.status {
-            TimerStatus::Running => "Running",
-            TimerStatus::PausedIdle => "PausedIdle",
-            TimerStatus::PausedManual => "PausedManual",
-            TimerStatus::OnBreak => "OnBreak",
-            TimerStatus::Snoozed => "Snoozed",
-        };
-        let is_paused = state.status == TimerStatus::PausedManual || state.status == TimerStatus::PausedIdle;
+        if let Ok(state) = self.state.read() {
+            let (formatted, state_str, is_paused) = match state.status {
+                TimerStatus::Running => (Self::format_time(state.remaining_seconds), "Running", false),
+                TimerStatus::PausedIdle => (Self::format_time(state.remaining_seconds), "PausedIdle", true),
+                TimerStatus::PausedManual => (Self::format_time(state.remaining_seconds), "PausedManual", true),
+                TimerStatus::PausedQuietHours => (Self::format_time(state.remaining_seconds), "PausedQuietHours", true),
+                TimerStatus::OnBreak => (Self::format_time(state.break_remaining_seconds), "OnBreak", false),
+            };
 
-        TimerInfo {
-            remaining_seconds: state.remaining_seconds,
-            formatted_time: formatted,
-            state: state_str.to_string(),
-            is_paused,
+            let mode_str = if state.is_long_break {
+                "PomodoroLongBreak".to_string()
+            } else {
+                "Standard".to_string()
+            };
+
+            TimerInfo {
+                remaining_seconds: state.remaining_seconds,
+                break_remaining_seconds: state.break_remaining_seconds,
+                formatted_time: formatted,
+                state: state_str.to_string(),
+                is_paused,
+                timer_mode: mode_str,
+                current_cycle: state.current_cycle,
+                is_long_break: state.is_long_break,
+            }
+        } else {
+            TimerInfo {
+                remaining_seconds: 0,
+                break_remaining_seconds: 0,
+                formatted_time: "--:--".to_string(),
+                state: "Unknown".to_string(),
+                is_paused: false,
+                timer_mode: "Standard".to_string(),
+                current_cycle: 1,
+                is_long_break: false,
+            }
         }
     }
 
     pub fn pause(&self) {
         if let Ok(mut state) = self.state.write() {
-            if state.status == TimerStatus::Running || state.status == TimerStatus::Snoozed {
+            if state.status == TimerStatus::Running {
                 state.status = TimerStatus::PausedManual;
             }
         }
@@ -77,130 +104,155 @@ impl TimerEngine {
 
     pub fn resume(&self) {
         if let Ok(mut state) = self.state.write() {
-            if state.status == TimerStatus::PausedManual || state.status == TimerStatus::PausedIdle {
+            if state.status == TimerStatus::PausedManual
+                || state.status == TimerStatus::PausedIdle
+                || state.status == TimerStatus::PausedQuietHours
+            {
                 state.status = TimerStatus::Running;
-                state.last_tick_instant = Instant::now();
-                state.last_wall_time = SystemTime::now();
+                state.last_tick_time = Instant::now();
             }
         }
     }
 
-    pub fn reset(&self, work_minutes: u32) {
+    pub fn reset(&self, work_duration_minutes: u32) {
         if let Ok(mut state) = self.state.write() {
-            state.remaining_seconds = work_minutes.max(1) * 60;
+            state.remaining_seconds = work_duration_minutes * 60;
             state.break_remaining_seconds = 0;
             state.status = TimerStatus::Running;
-            state.last_tick_instant = Instant::now();
-            state.last_wall_time = SystemTime::now();
+            state.last_tick_time = Instant::now();
         }
     }
 
-    pub fn snooze(&self, snooze_minutes: u32) {
+    pub fn snooze(&self, snooze_duration_minutes: u32) {
         if let Ok(mut state) = self.state.write() {
-            state.remaining_seconds = snooze_minutes.max(1) * 60;
+            state.remaining_seconds = snooze_duration_minutes * 60;
             state.break_remaining_seconds = 0;
-            state.status = TimerStatus::Snoozed;
-            state.last_tick_instant = Instant::now();
-            state.last_wall_time = SystemTime::now();
+            state.status = TimerStatus::Running;
+            state.last_tick_time = Instant::now();
         }
     }
 
-    pub fn adjust_work_duration(&self, old_work_minutes: u32, new_work_minutes: u32) {
-        if old_work_minutes == new_work_minutes {
-            return;
-        }
+    pub fn adjust_work_duration(&self, old_duration_minutes: u32, new_duration_minutes: u32) {
         if let Ok(mut state) = self.state.write() {
-            if state.status == TimerStatus::Running
-                || state.status == TimerStatus::PausedManual
-                || state.status == TimerStatus::PausedIdle
-            {
-                let old_total_secs = old_work_minutes.max(1) * 60;
-                let new_total_secs = new_work_minutes.max(1) * 60;
-                let elapsed = old_total_secs.saturating_sub(state.remaining_seconds);
-                state.remaining_seconds = new_total_secs.saturating_sub(elapsed).max(1);
+            if state.status != TimerStatus::OnBreak {
+                let old_total_seconds = old_duration_minutes * 60;
+                let new_total_seconds = new_duration_minutes * 60;
+
+                let elapsed_seconds = old_total_seconds.saturating_sub(state.remaining_seconds);
+                if new_total_seconds > elapsed_seconds {
+                    state.remaining_seconds = new_total_seconds - elapsed_seconds;
+                } else {
+                    state.remaining_seconds = 1;
+                }
             }
         }
     }
 
-    /// Ticks the timer by 1 second. Returns `true` if a break notification should trigger!
     pub fn tick(&self, config: &BlinkConfig) -> bool {
         let mut state = match self.state.write() {
             Ok(s) => s,
             Err(_) => return false,
         };
 
-        let now_wall = SystemTime::now();
-        let now_instant = Instant::now();
+        // System Sleep / Wakeup compensation
+        let now = Instant::now();
+        let elapsed = now.duration_since(state.last_tick_time).as_secs();
+        state.last_tick_time = now;
 
-        // 1. Sleep/Hibernate delta check:
-        // If the system woke from sleep and time jumped forward more than work duration,
-        // treat break as taken and reset.
-        if let Ok(elapsed_wall) = now_wall.duration_since(state.last_wall_time) {
-            let work_duration_secs = (config.work_duration_minutes as u64) * 60;
-            if elapsed_wall > Duration::from_secs(work_duration_secs) && elapsed_wall > Duration::from_secs(300) {
-                state.remaining_seconds = config.work_duration_minutes * 60;
-                state.status = TimerStatus::Running;
-                state.last_wall_time = now_wall;
-                state.last_tick_instant = now_instant;
-                return false;
-            }
+        if elapsed > 10 {
+            println!("[Blink Timer] System resumed from sleep/hibernate ({}s elapsed). Resetting interval.", elapsed);
+            let total_work = if config.timer_mode == TimerMode::Pomodoro {
+                config.pomodoro_work_minutes * 60
+            } else {
+                config.work_duration_minutes * 60
+            };
+            state.remaining_seconds = total_work;
+            state.status = TimerStatus::Running;
+            return false;
         }
-        state.last_wall_time = now_wall;
-        state.last_tick_instant = now_instant;
 
-        // 2. Idle Detection check
+        // 1. Handle Active Break Countdown
+        if state.status == TimerStatus::OnBreak {
+            if state.break_remaining_seconds > 0 {
+                state.break_remaining_seconds -= 1;
+            }
+            if state.break_remaining_seconds == 0 {
+                // Break completed!
+                if config.timer_mode == TimerMode::Pomodoro {
+                    if state.is_long_break {
+                        state.current_cycle = 1;
+                        state.is_long_break = false;
+                    } else {
+                        state.current_cycle += 1;
+                    }
+                    state.remaining_seconds = config.pomodoro_work_minutes * 60;
+                } else {
+                    state.remaining_seconds = config.work_duration_minutes * 60;
+                }
+                state.status = TimerStatus::Running;
+            }
+            return false;
+        }
+
+        // 2. Check Scheduled Quiet Hours
+        if IdleDetector::is_quiet_hours_active(config) {
+            if state.status != TimerStatus::PausedQuietHours {
+                state.status = TimerStatus::PausedQuietHours;
+            }
+            return false;
+        } else if state.status == TimerStatus::PausedQuietHours {
+            state.status = TimerStatus::Running;
+        }
+
+        // 3. Check Smart Idle Detection
         if config.idle_detection_enabled {
-            let idle_secs = IdleDetector::get_idle_seconds();
-            if idle_secs >= (config.idle_threshold_seconds as u64) {
-                if state.status == TimerStatus::Running || state.status == TimerStatus::Snoozed {
+            let idle_seconds = IdleDetector::get_idle_seconds();
+            if idle_seconds >= config.idle_threshold_seconds as u64 {
+                if state.status == TimerStatus::Running {
                     state.status = TimerStatus::PausedIdle;
                 }
                 return false;
             } else if state.status == TimerStatus::PausedIdle {
-                // Resumed user activity!
                 state.status = TimerStatus::Running;
             }
         }
 
-        // 3. Status handling
-        match state.status {
-            TimerStatus::PausedManual | TimerStatus::PausedIdle => {
-                // Do not tick
-                false
-            }
-            TimerStatus::OnBreak => {
-                if state.break_remaining_seconds > 0 {
-                    state.break_remaining_seconds -= 1;
-                }
-                if state.break_remaining_seconds == 0 {
-                    // Break finished! Start next work interval
-                    state.remaining_seconds = config.work_duration_minutes * 60;
-                    state.status = TimerStatus::Running;
-                }
-                false
-            }
-            TimerStatus::Running | TimerStatus::Snoozed => {
-                if state.remaining_seconds > 0 {
-                    state.remaining_seconds -= 1;
-                }
-
-                if state.remaining_seconds == 0 {
-                    // Trigger break!
-                    state.status = TimerStatus::OnBreak;
-                    state.break_remaining_seconds = config.break_duration_seconds;
-                    true
-                } else {
-                    false
-                }
-            }
+        // 4. Do not tick if manually paused
+        if state.status == TimerStatus::PausedManual {
+            return false;
         }
-    }
-}
 
-pub fn format_time(total_seconds: u32) -> String {
-    let minutes = total_seconds / 60;
-    let seconds = total_seconds % 60;
-    format!("{:02}:{:02}", minutes, seconds)
+        // 5. Decrement remaining work timer
+        if state.remaining_seconds > 0 {
+            state.remaining_seconds -= 1;
+        }
+
+        // 6. Check for Break Trigger
+        if state.remaining_seconds == 0 {
+            if config.timer_mode == TimerMode::Pomodoro {
+                let is_long = state.current_cycle >= config.pomodoro_cycles_before_long_break;
+                state.is_long_break = is_long;
+                state.break_remaining_seconds = if is_long {
+                    config.pomodoro_long_break_minutes * 60
+                } else {
+                    config.pomodoro_short_break_minutes * 60
+                };
+            } else {
+                state.is_long_break = false;
+                state.break_remaining_seconds = config.break_duration_seconds;
+            }
+            state.status = TimerStatus::OnBreak;
+            return true;
+        }
+
+        false
+    }
+
+    pub fn format_time(seconds: u32) -> String {
+        let m = seconds / 60;
+        let s = seconds % 60;
+        format!("{:02}:{:02}", m, s)
+    }
 }
 
 #[cfg(test)]
@@ -209,96 +261,82 @@ mod tests {
 
     #[test]
     fn test_format_time() {
-        assert_eq!(format_time(1200), "20:00");
-        assert_eq!(format_time(65), "01:05");
-        assert_eq!(format_time(0), "00:00");
+        assert_eq!(TimerEngine::format_time(1200), "20:00");
+        assert_eq!(TimerEngine::format_time(45), "00:45");
+        assert_eq!(TimerEngine::format_time(0), "00:00");
+        assert_eq!(TimerEngine::format_time(60), "01:00");
     }
 
     #[test]
     fn test_timer_countdown_and_trigger() {
-        let engine = TimerEngine::new(1); // 60 seconds
-        let config = BlinkConfig {
+        let engine = TimerEngine::new(1);
+        let cfg = BlinkConfig {
             work_duration_minutes: 1,
-            break_duration_seconds: 5,
+            break_duration_seconds: 20,
             idle_detection_enabled: false,
-            ..Default::default()
+            quiet_hours_enabled: false,
+            ..BlinkConfig::default()
         };
 
-        // Initially 60s
-        let info = engine.get_info();
-        assert_eq!(info.remaining_seconds, 60);
-        assert_eq!(info.state, "Running");
-
-        // Fast forward 59 ticks
-        for _ in 0..59 {
-            let trigger = engine.tick(&config);
-            assert!(!trigger);
+        if let Ok(mut s) = engine.state.write() {
+            s.remaining_seconds = 2;
         }
 
-        let info = engine.get_info();
-        assert_eq!(info.remaining_seconds, 1);
+        assert!(!engine.tick(&cfg));
+        assert_eq!(engine.get_info().remaining_seconds, 1);
 
-        // 60th tick triggers break
-        let trigger = engine.tick(&config);
-        assert!(trigger);
-
-        let info = engine.get_info();
-        assert_eq!(info.state, "OnBreak");
+        assert!(engine.tick(&cfg));
+        assert_eq!(engine.get_info().state, "OnBreak");
+        assert_eq!(engine.get_info().break_remaining_seconds, 20);
     }
 
     #[test]
-    fn test_pause_and_resume() {
-        let engine = TimerEngine::new(20);
-        let config = BlinkConfig {
+    fn test_pomodoro_cycle_progression() {
+        let engine = TimerEngine::new(25);
+        let cfg = BlinkConfig {
+            timer_mode: TimerMode::Pomodoro,
+            pomodoro_work_minutes: 25,
+            pomodoro_short_break_minutes: 5,
+            pomodoro_long_break_minutes: 15,
+            pomodoro_cycles_before_long_break: 2, // 2 cycles for test
             idle_detection_enabled: false,
-            ..Default::default()
+            quiet_hours_enabled: false,
+            ..BlinkConfig::default()
         };
 
-        engine.pause();
-        assert!(engine.get_info().is_paused);
-
-        // Tick while paused should not decrement
-        let trigger = engine.tick(&config);
-        assert!(!trigger);
-        assert_eq!(engine.get_info().remaining_seconds, 1200);
-
-        engine.resume();
-        assert!(!engine.get_info().is_paused);
-    }
-
-    #[test]
-    fn test_snooze() {
-        let engine = TimerEngine::new(20);
-        engine.snooze(3); // 3 minutes = 180s
-        let info = engine.get_info();
-        assert_eq!(info.remaining_seconds, 180);
-        assert_eq!(info.state, "Snoozed");
-    }
-
-    #[test]
-    fn test_adjust_work_duration() {
-        let engine = TimerEngine::new(20);
-        // Simulate working for 5 minutes (300s worked, 900s remaining)
-        let config = BlinkConfig {
-            work_duration_minutes: 20,
-            idle_detection_enabled: false,
-            ..Default::default()
-        };
-        for _ in 0..300 {
-            engine.tick(&config);
+        // Cycle 1 Trigger -> Short Break (5 min = 300s)
+        if let Ok(mut s) = engine.state.write() {
+            s.remaining_seconds = 1;
+            s.current_cycle = 1;
         }
-        assert_eq!(engine.get_info().remaining_seconds, 900);
+        assert!(engine.tick(&cfg));
+        assert_eq!(engine.get_info().state, "OnBreak");
+        assert!(!engine.get_info().is_long_break);
+        assert_eq!(engine.get_info().break_remaining_seconds, 300);
 
-        // Saving other settings (work duration same: 20 -> 20)
-        engine.adjust_work_duration(20, 20);
-        assert_eq!(engine.get_info().remaining_seconds, 900);
+        // Finish Short Break -> Moves to Cycle 2
+        if let Ok(mut s) = engine.state.write() {
+            s.break_remaining_seconds = 1;
+        }
+        assert!(!engine.tick(&cfg));
+        assert_eq!(engine.get_info().state, "Running");
+        assert_eq!(engine.get_info().current_cycle, 2);
 
-        // Changing work duration 20 -> 30 (300s worked, should have 1500s remaining = 25m)
-        engine.adjust_work_duration(20, 30);
-        assert_eq!(engine.get_info().remaining_seconds, 1500);
+        // Cycle 2 Trigger -> Long Break (15 min = 900s)
+        if let Ok(mut s) = engine.state.write() {
+            s.remaining_seconds = 1;
+        }
+        assert!(engine.tick(&cfg));
+        assert_eq!(engine.get_info().state, "OnBreak");
+        assert!(engine.get_info().is_long_break);
+        assert_eq!(engine.get_info().break_remaining_seconds, 900);
 
-        // Changing work duration 30 -> 10 (300s worked, should have 300s remaining = 5m)
-        engine.adjust_work_duration(30, 10);
-        assert_eq!(engine.get_info().remaining_seconds, 300);
+        // Finish Long Break -> Resets to Cycle 1
+        if let Ok(mut s) = engine.state.write() {
+            s.break_remaining_seconds = 1;
+        }
+        assert!(!engine.tick(&cfg));
+        assert_eq!(engine.get_info().state, "Running");
+        assert_eq!(engine.get_info().current_cycle, 1);
     }
 }

@@ -260,6 +260,124 @@ body {
   margin-top: 2px;
 }
 
+/* Mode Selector (20-20-20 vs Pomodoro) */
+.mode-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-option {
+  flex: 1;
+  display: flex;
+  cursor: pointer;
+}
+
+.mode-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-card {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--bg-card-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mode-option input:checked + .mode-card {
+  border-color: var(--accent);
+  background: rgba(0, 120, 212, 0.08);
+}
+
+.mode-title {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.mode-desc {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Custom Sound Box */
+.sound-path-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-card-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.sound-path-display {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.sound-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Scheduled Quiet Hours */
+.time-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-input {
+  width: 90px !important;
+  text-align: center !important;
+}
+
+.day-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.day-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-input);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.day-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+/* Export / Import Grid */
+.export-import-grid {
+  display: flex;
+  gap: 8px;
+}
+
+.export-import-grid button {
+  flex: 1;
+}
+
 /* Stats Tab */
 .stats-grid {
   display: grid;
@@ -768,4 +886,46 @@ body {
 .footer-actions {
   display: flex;
   gap: 8px;
+}
+
+/* Confirmation Modal Dialog */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  width: 320px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.modal-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
 }

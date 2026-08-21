@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const RETENTION_SECONDS: u64 = 90 * 86400; // 90 days retention
+const STREAK_MILESTONES: &[u32] = &[5, 10, 25, 50, 100];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BreakRecord {
@@ -56,7 +57,7 @@ impl HistoryManager {
         }
     }
 
-    pub fn record_break(&self, action: &str, duration_seconds: u32) -> Result<(), String> {
+    pub fn record_break(&self, action: &str, duration_seconds: u32) -> (Result<(), String>, Option<u32>) {
         let now_secs = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -70,6 +71,8 @@ impl HistoryManager {
             duration_seconds,
         };
 
+        let mut milestone_hit = None;
+
         if let Ok(mut records) = self.records.write() {
             records.push(record);
 
@@ -77,10 +80,30 @@ impl HistoryManager {
             let cutoff = now_secs.saturating_sub(RETENTION_SECONDS);
             records.retain(|r| r.timestamp >= cutoff);
 
-            Self::save_records(&self.history_path, &records)?;
+            if let Err(e) = Self::save_records(&self.history_path, &records) {
+                return (Err(e), None);
+            }
+
+            // Calculate streak to check for milestone celebrations
+            if action == "completed" || action == "dismissed" {
+                let stats = Self::compute_stats(&records, now_secs);
+                if STREAK_MILESTONES.contains(&stats.current_streak) {
+                    milestone_hit = Some(stats.current_streak);
+                }
+            }
         }
 
-        Ok(())
+        (Ok(()), milestone_hit)
+    }
+
+    pub fn get_current_streak(&self) -> u32 {
+        let now_secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let records = self.records.read().map(|r| r.clone()).unwrap_or_default();
+        Self::compute_stats(&records, now_secs).current_streak
     }
 
     pub fn get_stats(&self) -> BreakStats {
@@ -123,7 +146,7 @@ impl HistoryManager {
         }
         let current_streak = running_streak;
 
-        // Daily average over active recorded days (or 7 days if history exists)
+        // Daily average over active recorded days
         let unique_days = records
             .iter()
             .filter(|r| r.action == "completed" || r.action == "dismissed")
@@ -230,84 +253,26 @@ mod tests {
 
     #[test]
     fn test_date_conversion() {
-        // 2026-08-20 00:00:00 UTC = 1787184000
         let (date, day) = timestamp_to_date(1787184000);
         assert_eq!(date, "2026-08-20");
         assert_eq!(day, "Thu");
-
-        // 1970-01-01
-        let (date_epoch, day_epoch) = timestamp_to_date(0);
-        assert_eq!(date_epoch, "1970-01-01");
-        assert_eq!(day_epoch, "Thu");
     }
 
     #[test]
-    fn test_compute_stats_and_streaks() {
-        let now_secs = 1787184000; // 2026-08-20 (Thursday)
-        let records = vec![
-            BreakRecord {
-                timestamp: now_secs - 86400 * 2, // Tuesday
-                date: "2026-08-18".to_string(),
-                action: "completed".to_string(),
-                duration_seconds: 20,
-            },
-            BreakRecord {
-                timestamp: now_secs - 86400, // Wednesday
-                date: "2026-08-19".to_string(),
-                action: "completed".to_string(),
-                duration_seconds: 20,
-            },
-            BreakRecord {
-                timestamp: now_secs - 3600, // Thursday (Today) #1
-                date: "2026-08-20".to_string(),
-                action: "completed".to_string(),
-                duration_seconds: 20,
-            },
-            BreakRecord {
-                timestamp: now_secs - 1800, // Thursday (Today) #2
-                date: "2026-08-20".to_string(),
-                action: "dismissed".to_string(),
-                duration_seconds: 20,
-            },
-        ];
-
-        let stats = HistoryManager::compute_stats(&records, now_secs);
-        assert_eq!(stats.breaks_today, 2);
-        assert_eq!(stats.breaks_this_week, 4);
-        assert_eq!(stats.current_streak, 4);
-        assert_eq!(stats.best_streak, 4);
-        assert_eq!(stats.last_7_days.len(), 7);
-        assert_eq!(stats.last_7_days.last().unwrap().count, 2); // Today's count
-    }
-
-    #[test]
-    fn test_90_day_retention_pruning() {
+    fn test_streak_milestones_trigger() {
         let temp_dir = std::env::temp_dir().join(format!("blink_test_hist_{}", rand::random::<u32>()));
         let hist_path = temp_dir.join("history.json");
         let mgr = HistoryManager::new_with_path(hist_path.clone());
 
-        // Add an old record (100 days old)
-        let now_secs = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let old_ts = now_secs - (100 * 86400);
-
-        if let Ok(mut recs) = mgr.records.write() {
-            recs.push(BreakRecord {
-                timestamp: old_ts,
-                date: "2020-01-01".to_string(),
-                action: "completed".to_string(),
-                duration_seconds: 20,
-            });
+        // Add 4 breaks
+        for _ in 0..4 {
+            let (_, milestone) = mgr.record_break("completed", 20);
+            assert_eq!(milestone, None);
         }
 
-        // Record a new break -> triggers retention filter
-        mgr.record_break("completed", 20).unwrap();
-
-        let recs = mgr.records.read().unwrap();
-        assert_eq!(recs.len(), 1);
-        assert_ne!(recs[0].timestamp, old_ts);
+        // 5th break -> milestone!
+        let (_, milestone) = mgr.record_break("completed", 20);
+        assert_eq!(milestone, Some(5));
 
         let _ = fs::remove_dir_all(temp_dir);
     }

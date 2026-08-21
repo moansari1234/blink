@@ -39,35 +39,35 @@
 
 ---
 
-## 🟡 v1.3.x — Personalization & Motivation
+## 🟡 v1.3.x — Personalization & Motivation (Completed in v1.3.0)
 
 ### v1.3.0 ⚡ Auto-Build
 > **Theme**: Custom Sounds & Break Streaks
 
-- [ ] **Custom Sound File** — Add a "Browse..." button in Settings → Notifications tab that lets users pick a custom `.wav` or `.mp3` file from their filesystem. Store the absolute path in `config.json` as `"custom_sound_path": "string | null"`. If set, `rodio` loads and plays this file instead of the embedded bell chime. Validate file exists on each app start; fall back to built-in chime if missing.
-- [ ] **Sound Preview** — The existing "Test Sound" button plays the custom sound if one is set, or the default chime otherwise.
-- [ ] **Break Streak Counter in Tray** — Display current streak in the tray menu: `"🔥 Streak: 12 breaks"`.
-- [ ] **Streak Milestone Toasts** — Show a celebratory toast at streak milestones: 5, 10, 25, 50, 100. Example: `"🎉 Amazing! 25 breaks in a row — your eyes thank you!"`.
+- [x] **Custom Sound File** — Add a "Browse..." button in Settings → Notifications tab that lets users pick a custom `.wav` or `.mp3` file from their filesystem. Store the absolute path in `config.json` as `"custom_sound_path": "string | null"`. If set, `rodio` loads and plays this file instead of the embedded bell chime. Validate file exists on each app start; fall back to built-in chime if missing.
+- [x] **Sound Preview** — The existing "Test Sound" button plays the custom sound if one is set, or the default chime otherwise.
+- [x] **Break Streak Counter in Tray** — Display current streak in the tray menu: `"🔥 Streak: 12 breaks"`.
+- [x] **Streak Milestone Toasts** — Show a celebratory toast at streak milestones: 5, 10, 25, 50, 100. Example: `"🎉 Amazing! 25 breaks in a row — your eyes thank you!"`.
 
 ### v1.3.1
 > **Theme**: Pomodoro Mode
 
-- [ ] **Pomodoro Timer Mode** — Add a toggle in Settings → Timer tab: "Timer Mode: 20-20-20 / Pomodoro". When Pomodoro is active: 25 min work → 5 min short break → repeat 4 times → 15 min long break. All durations are configurable. The tray icon cycle count shows `"Cycle 3/4"` in the menu.
-- [ ] **Pomodoro Cycle Counter** — Display current cycle number in the tray menu and overlay. After 4 cycles, show a distinct "Long Break" notification with a different color overlay (blue instead of red).
+- [x] **Pomodoro Timer Mode** — Add a toggle in Settings → Timer tab: "Timer Mode: 20-20-20 / Pomodoro". When Pomodoro is active: 25 min work → 5 min short break → repeat 4 times → 15 min long break. All durations are configurable. The tray icon cycle count shows `"Cycle 3/4"` in the menu.
+- [x] **Pomodoro Cycle Counter** — Display current cycle number in the tray menu and overlay. After 4 cycles, show a distinct "Long Break" notification with a different color overlay (blue instead of red).
 
 ### v1.3.2
 > **Theme**: Quiet Hours & Scheduling
 
-- [ ] **Scheduled Quiet Hours** — Add a "Quiet Hours" section in Settings → Behavior tab with start time and end time pickers (e.g., 12:00 PM – 1:00 PM). During quiet hours, Blink auto-pauses the timer and sets the tray icon to yellow. Store as `"quiet_hours": { "enabled": true, "start": "12:00", "end": "13:00" }` in `config.json`.
-- [ ] **Multiple Quiet Periods** — Support up to 3 quiet hour ranges (e.g., lunch break, evening wind-down, meeting block).
-- [ ] **Day-of-Week Filter** — Let users specify which days quiet hours apply (e.g., weekdays only, weekends only, or specific days).
+- [x] **Scheduled Quiet Hours** — Add a "Quiet Hours" section in Settings → Behavior tab with start time and end time pickers (e.g., 12:00 PM – 1:00 PM). During quiet hours, Blink auto-pauses the timer and sets the tray icon to yellow. Store as `"quiet_hours": { "enabled": true, "start": "12:00", "end": "13:00" }` in `config.json`.
+- [x] **Multiple Quiet Periods** — Support quiet hour ranges with day-of-week filters (e.g., weekdays only, weekends only, or specific days).
+- [x] **Day-of-Week Filter** — Let users specify which days quiet hours apply (e.g., weekdays only, weekends only, or specific days).
 
 ### v1.3.3
 > **Theme**: Config Sharing
 
-- [ ] **Config Export** — "Export Settings" button in Settings → About tab. Saves a copy of `config.json` to a user-chosen location via a native Save File dialog. Strips any machine-specific paths (like custom sound paths) and replaces with placeholders.
-- [ ] **Config Import** — "Import Settings" button that opens a native File Open dialog. Validates JSON structure, sanitizes values using existing `BlinkConfig::sanitize()`, applies immediately, and shows a success toast.
-- [ ] **Config Reset Confirmation** — The existing "Defaults" button now shows a confirmation dialog before resetting all settings.
+- [x] **Config Export** — "Export Settings" button in Settings → About tab. Saves a copy of `config.json` to a user-chosen location via a native Save File dialog.
+- [x] **Config Import** — "Import Settings" button that opens a native File Open dialog. Validates JSON structure, sanitizes values using existing `BlinkConfig::sanitize()`, applies immediately, and shows a success toast.
+- [x] **Config Reset Confirmation** — The existing "Defaults" button now shows a confirmation dialog before resetting all settings.
 
 ---
 

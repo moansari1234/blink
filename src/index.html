@@ -17,7 +17,7 @@
         </svg>
         <div>
           <h1 class="brand-title">Blink</h1>
-          <span class="brand-subtitle">20-20-20 Break Reminder</span>
+          <span class="brand-subtitle">Smart Eye Care & Productivity</span>
         </div>
       </div>
       <div class="timer-badge" id="timerBadge">
@@ -56,29 +56,100 @@
       <section class="tab-pane active" id="tab-timer">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Work Interval</h3>
-            <p class="card-desc">Time between eye rest reminders.</p>
+            <h3 class="card-title">Timer Mode</h3>
+            <p class="card-desc">Choose between 20-20-20 eye care or Pomodoro productivity.</p>
           </div>
-          <div class="control-row">
-            <div class="input-with-unit">
-              <input type="number" id="workDuration" min="1" max="180" value="20" class="fluent-input">
-              <span class="unit-label">minutes</span>
-            </div>
-            <span class="preset-hint">Default: 20 min</span>
+          <div class="mode-selector">
+            <label class="mode-option">
+              <input type="radio" name="timerMode" value="twentytwentytwenty" checked id="mode202020">
+              <div class="mode-card">
+                <span class="mode-title">👁 20-20-20 Rule</span>
+                <span class="mode-desc">20 min work &rarr; 20 sec eye rest</span>
+              </div>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="timerMode" value="pomodoro" id="modePomodoro">
+              <div class="mode-card">
+                <span class="mode-title">🍅 Pomodoro</span>
+                <span class="mode-desc">25 min work &rarr; short/long breaks</span>
+              </div>
+            </label>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Break Duration</h3>
-            <p class="card-desc">How long to rest your eyes looking 20 feet away.</p>
-          </div>
-          <div class="control-row">
-            <div class="input-with-unit">
-              <input type="number" id="breakDuration" min="5" max="300" value="20" class="fluent-input">
-              <span class="unit-label">seconds</span>
+        <!-- 20-20-20 Controls -->
+        <div id="section202020">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Work Interval</h3>
+              <p class="card-desc">Time between eye rest reminders.</p>
             </div>
-            <span class="preset-hint">Default: 20 sec</span>
+            <div class="control-row">
+              <div class="input-with-unit">
+                <input type="number" id="workDuration" min="1" max="180" value="20" class="fluent-input">
+                <span class="unit-label">minutes</span>
+              </div>
+              <span class="preset-hint">Default: 20 min</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Break Duration</h3>
+              <p class="card-desc">How long to rest your eyes looking 20 feet away.</p>
+            </div>
+            <div class="control-row">
+              <div class="input-with-unit">
+                <input type="number" id="breakDuration" min="5" max="300" value="20" class="fluent-input">
+                <span class="unit-label">seconds</span>
+              </div>
+              <span class="preset-hint">Default: 20 sec</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pomodoro Controls -->
+        <div id="sectionPomodoro" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Pomodoro Work Duration</h3>
+              <p class="card-desc">Focus interval before a break.</p>
+            </div>
+            <div class="control-row">
+              <div class="input-with-unit">
+                <input type="number" id="pomodoroWork" min="1" max="120" value="25" class="fluent-input">
+                <span class="unit-label">minutes</span>
+              </div>
+              <span class="preset-hint">Default: 25 min</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Break Durations</h3>
+              <p class="card-desc">Short break between cycles and long break after full set.</p>
+            </div>
+            <div class="control-row">
+              <label>Short Break:</label>
+              <div class="input-with-unit">
+                <input type="number" id="pomodoroShortBreak" min="1" max="30" value="5" class="fluent-input">
+                <span class="unit-label">minutes</span>
+              </div>
+            </div>
+            <div class="control-row nested-control">
+              <label>Long Break:</label>
+              <div class="input-with-unit">
+                <input type="number" id="pomodoroLongBreak" min="1" max="60" value="15" class="fluent-input">
+                <span class="unit-label">minutes</span>
+              </div>
+            </div>
+            <div class="control-row nested-control">
+              <label>Long break after:</label>
+              <div class="input-with-unit">
+                <input type="number" id="pomodoroCycles" min="1" max="12" value="4" class="fluent-input">
+                <span class="unit-label">cycles</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -185,6 +256,20 @@
 
         <div class="card">
           <div class="card-header">
+            <h3 class="card-title">Custom Sound Chime</h3>
+            <p class="card-desc">Choose a custom audio file (.wav, .mp3, .ogg, .flac) or use built-in bell.</p>
+          </div>
+          <div class="sound-path-box">
+            <span class="sound-path-display" id="customSoundDisplay">Default: Built-in Bell Chime</span>
+            <div class="sound-actions">
+              <button class="fluent-button secondary small" id="btnBrowseSound">📁 Browse...</button>
+              <button class="fluent-button secondary small" id="btnClearSound" style="display: none;">✕ Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
             <h3 class="card-title">Snooze Duration</h3>
             <p class="card-desc">How long to delay a break when snoozed.</p>
           </div>
@@ -200,7 +285,7 @@
           <div class="toggle-row">
             <div>
               <h3 class="card-title">Audio Chime</h3>
-              <p class="card-desc">Play a soft bell chime when a break starts.</p>
+              <p class="card-desc">Play sound chime when a break starts.</p>
             </div>
             <label class="fluent-switch">
               <input type="checkbox" id="soundEnabled" checked>
@@ -251,6 +336,44 @@
               <input type="checkbox" id="hotkeysEnabled" checked>
               <span class="switch-slider"></span>
             </label>
+          </div>
+        </div>
+
+        <!-- Scheduled Quiet Hours -->
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <h3 class="card-title">Scheduled Quiet Hours</h3>
+              <p class="card-desc">Auto-pause timer during scheduled times (e.g. lunch break).</p>
+            </div>
+            <label class="fluent-switch">
+              <input type="checkbox" id="quietHoursEnabled">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div id="quietHoursControls" class="nested-control" style="display: none;">
+            <div class="control-row">
+              <label>Time Range:</label>
+              <div class="time-range-picker">
+                <input type="time" id="quietStart" value="12:00" class="fluent-input time-input">
+                <span class="unit-label">to</span>
+                <input type="time" id="quietEnd" value="13:00" class="fluent-input time-input">
+              </div>
+            </div>
+
+            <div class="control-row nested-control">
+              <label>Active Days:</label>
+              <div class="day-selector" id="daySelector">
+                <button type="button" class="day-btn" data-day="1">M</button>
+                <button type="button" class="day-btn" data-day="2">T</button>
+                <button type="button" class="day-btn" data-day="3">W</button>
+                <button type="button" class="day-btn" data-day="4">T</button>
+                <button type="button" class="day-btn" data-day="5">F</button>
+                <button type="button" class="day-btn" data-day="6">S</button>
+                <button type="button" class="day-btn" data-day="0">S</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -306,8 +429,23 @@
         <div class="card about-hero">
           <div class="about-logo">👁</div>
           <h2 class="about-app-name">Blink</h2>
-          <span class="version-tag">Version 1.2.0</span>
-          <p class="about-motto">Protect your vision with effortless 20-20-20 micro-breaks.</p>
+          <span class="version-tag">Version 1.3.0</span>
+          <p class="about-motto">Protect your vision with effortless 20-20-20 micro-breaks & Pomodoro.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Configuration Management</h3>
+            <p class="card-desc">Backup or restore your settings as JSON.</p>
+          </div>
+          <div class="export-import-grid">
+            <button class="fluent-button secondary small" id="btnExportConfig">
+              📤 Export Settings...
+            </button>
+            <button class="fluent-button secondary small" id="btnImportConfig">
+              📥 Import Settings...
+            </button>
+          </div>
         </div>
 
         <div class="card">
@@ -350,6 +488,18 @@
         <button class="fluent-button primary" id="btnSaveConfig">Save Settings</button>
       </div>
     </footer>
+
+    <!-- Confirmation Modal Dialog -->
+    <div class="modal-overlay" id="confirmModal" style="display: none;">
+      <div class="modal-card">
+        <h3 class="modal-title">Reset Settings?</h3>
+        <p class="modal-desc">Are you sure you want to reset all Blink settings to their default values?</p>
+        <div class="modal-actions">
+          <button class="fluent-button secondary" id="btnCancelReset">Cancel</button>
+          <button class="fluent-button primary" id="btnConfirmReset">Reset to Defaults</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="main.js"></script>

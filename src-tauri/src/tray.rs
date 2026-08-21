@@ -1,111 +1,113 @@
-use crate::config::BlinkConfig;
+use crate::config::{BlinkConfig, TimerMode};
 use crate::timer::TimerEngine;
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-use tauri::tray::{TrayIcon, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, Wry};
-
-const ICON_GREEN_BYTES: &[u8] = include_bytes!("../icons/icon-green.png");
-const ICON_YELLOW_BYTES: &[u8] = include_bytes!("../icons/icon-yellow.png");
-const ICON_RED_BYTES: &[u8] = include_bytes!("../icons/icon-red.png");
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIcon;
+use tauri::{AppHandle, Manager};
 
 pub struct TrayManager {
-    tray_handle: TrayIcon,
-    countdown_item: MenuItem<Wry>,
-    pause_resume_item: MenuItem<Wry>,
-    snooze_item: MenuItem<Wry>,
-    img_green: Image<'static>,
-    img_yellow: Image<'static>,
-    img_red: Image<'static>,
+    tray: TrayIcon,
+    green_icon: Image<'static>,
+    yellow_icon: Image<'static>,
+    red_icon: Image<'static>,
 }
 
 impl TrayManager {
-    pub fn setup(app: &AppHandle) -> Result<Self, Box<dyn std::error::Error>> {
-        let img_green = Image::from_bytes(ICON_GREEN_BYTES)?;
-        let img_yellow = Image::from_bytes(ICON_YELLOW_BYTES)?;
-        let img_red = Image::from_bytes(ICON_RED_BYTES)?;
-
-        // Build Menu Items
-        let countdown_item = MenuItem::with_id(app, "countdown", "⏱ 20:00 remaining", false, None::<&str>)?;
-        let pause_resume_item = MenuItem::with_id(app, "pause_resume", "⏸ Pause Timer", true, None::<&str>)?;
-        let reset_item = MenuItem::with_id(app, "reset", "🔄 Reset Timer", true, None::<&str>)?;
-        let snooze_item = MenuItem::with_id(app, "snooze", "💤 Snooze (5m)", true, None::<&str>)?;
-        let settings_item = MenuItem::with_id(app, "settings", "⚙ Settings", true, None::<&str>)?;
-        let quit_item = MenuItem::with_id(app, "quit", "❌ Quit", true, None::<&str>)?;
-        let sep1 = PredefinedMenuItem::separator(app)?;
-        let sep2 = PredefinedMenuItem::separator(app)?;
+    pub fn setup(app: &AppHandle) -> Result<Self, String> {
+        let pause_resume_item = MenuItem::with_id(app, "pause_resume", "Pause / Resume Timer", true, None::<&str>)
+            .map_err(|e| e.to_string())?;
+        let reset_item = MenuItem::with_id(app, "reset", "Reset Timer", true, None::<&str>)
+            .map_err(|e| e.to_string())?;
+        let snooze_item = MenuItem::with_id(app, "snooze", "Snooze Break (5 min)", true, None::<&str>)
+            .map_err(|e| e.to_string())?;
+        let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)
+            .map_err(|e| e.to_string())?;
+        let quit_item = MenuItem::with_id(app, "quit", "Quit Blink", true, None::<&str>)
+            .map_err(|e| e.to_string())?;
 
         let menu = Menu::with_items(
             app,
             &[
-                &countdown_item,
-                &sep1,
                 &pause_resume_item,
                 &reset_item,
                 &snooze_item,
-                &sep2,
                 &settings_item,
                 &quit_item,
             ],
-        )?;
+        )
+        .map_err(|e| e.to_string())?;
 
-        let tray = TrayIconBuilder::with_id("blink-tray")
-            .icon(img_green.clone())
+        let green_bytes = include_bytes!("../icons/icon-green.png");
+        let yellow_bytes = include_bytes!("../icons/icon-yellow.png");
+        let red_bytes = include_bytes!("../icons/icon-red.png");
+
+        let green_icon = Image::from_bytes(green_bytes).map_err(|e| e.to_string())?;
+        let yellow_icon = Image::from_bytes(yellow_bytes).map_err(|e| e.to_string())?;
+        let red_icon = Image::from_bytes(red_bytes).map_err(|e| e.to_string())?;
+
+        let tray = tauri::tray::TrayIconBuilder::new()
+            .icon(green_icon.clone())
             .menu(&menu)
             .tooltip("Blink — 20-20-20 Break Reminder")
-            .show_menu_on_left_click(false)
             .on_tray_icon_event(|tray, event| {
-                if let TrayIconEvent::Click { button, .. } = event {
-                    if button == tauri::tray::MouseButton::Left {
-                        if let Some(win) = tray.app_handle().get_webview_window("main") {
-                            let _ = win.show();
-                            let _ = win.set_focus();
-                        }
+                if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                    let app = tray.app_handle();
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.show();
+                        let _ = win.set_focus();
                     }
                 }
             })
-            .build(app)?;
+            .build(app)
+            .map_err(|e| e.to_string())?;
 
         Ok(Self {
-            tray_handle: tray,
-            countdown_item,
-            pause_resume_item,
-            snooze_item,
-            img_green,
-            img_yellow,
-            img_red,
+            tray,
+            green_icon,
+            yellow_icon,
+            red_icon,
         })
     }
 
-    pub fn update(&self, timer: &TimerEngine, config: &BlinkConfig) {
+    pub fn update(&self, timer: &TimerEngine, config: &BlinkConfig, streak: u32) {
         let info = timer.get_info();
 
-        // 1. Update Tooltip
-        let tooltip_text = format!("Blink — ⏱ {} remaining ({})", info.formatted_time, info.state);
-        let _ = self.tray_handle.set_tooltip(Some(&tooltip_text));
-
-        // 2. Update Countdown Menu Item
-        let countdown_text = format!("⏱ {} remaining", info.formatted_time);
-        let _ = self.countdown_item.set_text(countdown_text);
-
-        // 3. Update Pause/Resume Text
-        if info.is_paused {
-            let _ = self.pause_resume_item.set_text("▶ Resume Timer");
+        // Mode and cycle segment for tooltip
+        let mode_desc = if config.timer_mode == TimerMode::Pomodoro {
+            format!("🍅 Pomodoro ({}/{})", info.current_cycle, config.pomodoro_cycles_before_long_break)
         } else {
-            let _ = self.pause_resume_item.set_text("⏸ Pause Timer");
-        }
+            "👁 20-20-20".to_string()
+        };
 
-        // 4. Update Snooze text with configured snooze minutes
-        let snooze_text = format!("💤 Snooze ({}m)", config.snooze_duration_minutes);
-        let _ = self.snooze_item.set_text(snooze_text);
+        // Update Tray Icon & Tooltip
+        let tooltip = match info.state.as_str() {
+            "Running" => {
+                let _ = self.tray.set_icon(Some(self.green_icon.clone()));
+                format!("Blink — ⏱ {} ({}) | 🔥 Streak: {}", info.formatted_time, mode_desc, streak)
+            }
+            "PausedIdle" => {
+                let _ = self.tray.set_icon(Some(self.yellow_icon.clone()));
+                format!("Blink — 💤 Away / Idle (Paused: {})", info.formatted_time)
+            }
+            "PausedQuietHours" => {
+                let _ = self.tray.set_icon(Some(self.yellow_icon.clone()));
+                "Blink — 🌙 Quiet Hours (Paused)".to_string()
+            }
+            "PausedManual" => {
+                let _ = self.tray.set_icon(Some(self.yellow_icon.clone()));
+                format!("Blink — ⏸ Paused ({})", info.formatted_time)
+            }
+            "OnBreak" => {
+                let _ = self.tray.set_icon(Some(self.red_icon.clone()));
+                if info.is_long_break {
+                    format!("Blink — 🍅 Long Break! ({} remaining)", info.formatted_time)
+                } else {
+                    format!("Blink — 👁 Break Time! ({} remaining)", info.formatted_time)
+                }
+            }
+            _ => "Blink — Break Reminder".to_string(),
+        };
 
-        // 5. Update Tray Icon Color
-        if info.state == "Running" {
-            let _ = self.tray_handle.set_icon(Some(self.img_green.clone()));
-        } else if info.state == "PausedIdle" || info.state == "PausedManual" {
-            let _ = self.tray_handle.set_icon(Some(self.img_yellow.clone()));
-        } else if info.state == "OnBreak" {
-            let _ = self.tray_handle.set_icon(Some(self.img_red.clone()));
-        }
+        let _ = self.tray.set_tooltip(Some(tooltip));
     }
 }

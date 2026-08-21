@@ -80,6 +80,10 @@ body {
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.snooze-card.long-break {
+  border-color: rgba(96, 205, 255, 0.4);
+}
+
 .snooze-card.dismissing {
   animation: slideOut 0.22s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
