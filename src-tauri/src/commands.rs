@@ -20,7 +20,7 @@ pub fn get_config(state: State<'_, AppState>) -> BlinkConfig {
 }
 
 #[tauri::command]
-pub fn save_config(state: State<'_, AppState>, config: BlinkConfig) -> Result<(), String> {
+pub fn save_config(app: AppHandle, state: State<'_, AppState>, config: BlinkConfig) -> Result<(), String> {
     let old_config = state.config_mgr.get_config();
     state.config_mgr.update_config(config.clone())?;
 
@@ -30,6 +30,18 @@ pub fn save_config(state: State<'_, AppState>, config: BlinkConfig) -> Result<()
             .timer
             .adjust_work_duration(old_config.work_duration_minutes, config.work_duration_minutes);
     }
+
+    // Toggle autostart when the setting changes
+    if old_config.auto_start != config.auto_start {
+        use tauri_plugin_autostart::ManagerExt;
+        let autolaunch = app.autolaunch();
+        if config.auto_start {
+            let _ = autolaunch.enable();
+        } else {
+            let _ = autolaunch.disable();
+        }
+    }
+
     Ok(())
 }
 

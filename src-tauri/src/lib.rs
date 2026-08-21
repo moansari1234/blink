@@ -21,6 +21,7 @@ use notification::NotificationManager;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Manager, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 use timer::TimerEngine;
 use tray::TrayManager;
 
@@ -75,6 +76,18 @@ pub fn run() {
                 Arc::clone(&config_worker),
                 app_handle.clone(),
             );
+
+            // Sync autostart with config setting
+            let autolaunch = app.handle().autolaunch();
+            let initial_cfg = config_worker.get_config();
+            let currently_enabled = autolaunch.is_enabled().unwrap_or(false);
+            if initial_cfg.auto_start && !currently_enabled {
+                let _ = autolaunch.enable();
+                println!("[Blink Autostart] Enabled auto-start on login");
+            } else if !initial_cfg.auto_start && currently_enabled {
+                let _ = autolaunch.disable();
+                println!("[Blink Autostart] Disabled auto-start on login");
+            }
 
             // Handle Tray Menu Action Events
             let timer_menu = Arc::clone(&timer_worker);
