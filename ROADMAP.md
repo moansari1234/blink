@@ -71,13 +71,18 @@
 
 ---
 
-## 🔵 v1.4.x — Accessibility & Wellness
+## 🔵 v1.4.x — Advanced Notifications & Wellness
 
 ### v1.4.0 ⚡ Auto-Build
-> **Theme**: Screen Dimming & Eye Exercises
+> **Theme**: Advanced Notification Styles & Visual Immersion
 
-- [ ] **Screen Dimming During Breaks** — Create a fullscreen transparent overlay window that gradually increases opacity from 0% to 60% over the 20-second break duration, naturally encouraging users to look away from the screen. Configurable max dimness (30%, 50%, 70%, 90%) in Settings → Notifications tab.
-- [ ] **Eye Exercise Prompts** — During breaks, the overlay shows guided micro-exercises with animated text prompts cycling every 5 seconds: "Look far left ← ... Look far right → ... Look up ↑ ... Look down ↓ ... Blink slowly 5 times". Toggle on/off in Settings → Notifications.
+- [ ] **Ambient Screen Edge Glow ("Edge Pulse")** — Glowing 4px breathing neon/mica border around the entire monitor perimeter for 20 seconds. Non-intrusive without blocking any buttons, mouse clicks, or central content — perfect for coders, designers, and gamers.
+- [ ] **Floating Island / Top Pill ("Dynamic Banner")** — Sleek, compact top-center floating pill banner (similar to Windows 11 Action pill / macOS Dynamic Island) displaying `👁 00:20 · Look 20ft away` with inline micro-buttons for Snooze & Dismiss.
+- [ ] **Full-Screen Focus Veil ("Screen Dimmer")** — Fullscreen transparent overlay window that smoothly dims the monitor (configurable 30%, 50%, 70%, 90% opacity) with a large centered countdown circle and relaxing breathing animations (inhale / hold / exhale).
+- [ ] **Audio-Only / "Eyes Closed" Whisper Mode** — Zero visual popups on screen. Dual-chime audio flow: plays a chime at the start, stays quiet for 20 seconds while you close your eyes, and plays a soft chime when the 20 seconds finish.
+- [ ] **Taskbar Pulse & Live Progress Bar** — Discretely flashes the taskbar icon and displays a live countdown progress bar directly over the Blink taskbar icon without any popup windows.
+- [ ] **Strict / Enforced Break Mode (Opt-in)** — Optional lockout toggle that prevents accidental or habitual early dismissals for the first 10 seconds of a break, with an emergency <kbd>Esc</kbd> key bypass.
+- [ ] **Eye Exercise Prompts** — Guided micro-exercises with animated prompts cycling during breaks: "Look far left ← ... Look far right → ... Look up ↑ ... Look down ↓ ... Blink slowly 5 times". Toggle on/off in Settings.
 - [ ] **Exercise Variety** — Rotate between 3 exercise sets across breaks so users don't see the same sequence every time.
 
 ### v1.4.1
